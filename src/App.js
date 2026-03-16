@@ -1,20 +1,21 @@
-import { Box, Heading } from "@chakra-ui/react";
-import CrearPaciente from "./components/CrearPaciente";
-import ListaPacientes from "./components/ListaPacientes";
+import { Box } from "@chakra-ui/react"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
+import Navbar from "./components/Navbar"
+import Dashboard from "./pages/Dashboard"
+import FichaPaciente from "./pages/FichaPaciente"
 
 function App() {
   return (
-    <Box minH="100vh" bg="gray.50">
-      <Box bg="blue.600" px={6} py={4} mb={6} boxShadow="sm">
-        <Heading size="lg" color="white">
-          Sistema Geriátrico
-        </Heading>
+    <BrowserRouter>
+      <Box minH="100vh" bg="gray.50">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/paciente/:id" element={<FichaPaciente />} />
+        </Routes>
       </Box>
-
-      <CrearPaciente />
-      <ListaPacientes />
-    </Box>
-  );
+    </BrowserRouter>
+  )
 }
 
-export default App;
+export default App
