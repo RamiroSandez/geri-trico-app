@@ -23,10 +23,12 @@ import {
 import { Toaster, toaster } from "../components/toaster"
 import DocumentosPanel from "../components/DocumentosPanel"
 import { ESTADOS_AMPARO } from "../utils/constants"
+import { useAuth } from "../contexts/AuthContext"
 
 export default function FichaPaciente() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { geriatrico } = useAuth()
 
   const [paciente, setPaciente] = useState(null)
   const [cargando, setCargando] = useState(true)
@@ -75,7 +77,6 @@ export default function FichaPaciente() {
         numero_afiliado: form.numero_afiliado,
         fecha_nacimiento: form.fecha_nacimiento || null,
         diagnostico: form.diagnostico,
-        nombre_geriatrico: form.nombre_geriatrico,
         telefono_contacto: form.telefono_contacto,
         nombre_contacto: form.nombre_contacto,
         motivo_ingreso: form.motivo_ingreso,
@@ -154,7 +155,7 @@ export default function FichaPaciente() {
           ? Math.floor((new Date() - new Date(paciente.fecha_nacimiento)) / (365.25 * 24 * 60 * 60 * 1000))
           : null,
         diagnostico: paciente.diagnostico,
-        nombre_geriatrico: paciente.nombre_geriatrico,
+        nombre_geriatrico: geriatrico?.nombre,
         motivo_ingreso: paciente.motivo_ingreso,
         antecedentes: paciente.antecedentes
           ? paciente.antecedentes.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
@@ -238,7 +239,6 @@ export default function FichaPaciente() {
           <Text color="gray.500" fontSize="sm" mt={1}>
             DNI: {paciente.dni}
             {paciente.Obra_social && ` | Obra Social: ${paciente.Obra_social}`}
-            {paciente.nombre_geriatrico && ` | Geriátrico: ${paciente.nombre_geriatrico}`}
           </Text>
         </Box>
       </HStack>
@@ -276,10 +276,6 @@ export default function FichaPaciente() {
                 <FieldRoot>
                   <FieldLabel fontSize="sm">Fecha de nacimiento</FieldLabel>
                   <Input type="date" value={form.fecha_nacimiento || ""} onChange={e => set("fecha_nacimiento", e.target.value)} />
-                </FieldRoot>
-                <FieldRoot>
-                  <FieldLabel fontSize="sm">Geriátrico / Institución</FieldLabel>
-                  <Input value={form.nombre_geriatrico || ""} onChange={e => set("nombre_geriatrico", e.target.value)} />
                 </FieldRoot>
                 <GridItem colSpan={{ base: 1, md: 2 }}>
                   <FieldRoot>

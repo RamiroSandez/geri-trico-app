@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../services/supabase"
+import { useAuth } from "../contexts/AuthContext"
 import {
   Badge,
   Box,
@@ -19,6 +20,7 @@ import CrearPacienteModal from "../components/CrearPacienteModal"
 import { ESTADOS_AMPARO } from "../utils/constants"
 
 export default function Dashboard() {
+  const { geriatrico } = useAuth()
   const [pacientes, setPacientes] = useState([])
   const [busqueda, setBusqueda] = useState("")
   const [cargando, setCargando] = useState(true)
@@ -30,12 +32,13 @@ export default function Dashboard() {
     const { data, error } = await supabase
       .from("Pacientes")
       .select("*")
+      .eq("geriatrico_id", geriatrico?.id)
       .order("created_at", { ascending: false })
     if (!error) setPacientes(data || [])
     setCargando(false)
   }
 
-  useEffect(() => { fetchPacientes() }, [])
+  useEffect(() => { fetchPacientes() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pacientesFiltrados = pacientes.filter(p =>
     p.Nombre_Completo?.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -49,21 +52,21 @@ export default function Dashboard() {
 
       {/* Stats por estado */}
       <Grid templateColumns="repeat(auto-fill, minmax(170px, 1fr))" gap={4} mb={6}>
-        <Card.Root borderRadius="lg" boxShadow="sm" bg="white">
+        <Card.Root borderRadius="lg" boxShadow="sm" bg="bg.panel">
           <Card.Body py={4} px={5}>
             <Text fontSize="3xl" fontWeight="bold" color="blue.600">
               {pacientes.length}
             </Text>
-            <Text fontSize="sm" color="gray.500">Total pacientes</Text>
+            <Text fontSize="sm" color="text.muted">Total pacientes</Text>
           </Card.Body>
         </Card.Root>
         {Object.entries(ESTADOS_AMPARO).map(([key, estado]) => (
-          <Card.Root key={key} borderRadius="lg" boxShadow="sm" bg="white">
+          <Card.Root key={key} borderRadius="lg" boxShadow="sm" bg="bg.panel">
             <Card.Body py={4} px={5}>
               <Text fontSize="3xl" fontWeight="bold" color={`${estado.color}.600`}>
                 {pacientes.filter(p => (p.estado_amparo || "preparando_documentacion") === key).length}
               </Text>
-              <Text fontSize="sm" color="gray.500">{estado.label}</Text>
+              <Text fontSize="sm" color="text.muted">{estado.label}</Text>
             </Card.Body>
           </Card.Root>
         ))}
@@ -76,7 +79,7 @@ export default function Dashboard() {
           value={busqueda}
           onChange={e => setBusqueda(e.target.value)}
           maxW="420px"
-          bg="white"
+          bg="bg.panel"
           borderRadius="lg"
         />
         <Button colorPalette="blue" onClick={() => setMostrarCrear(true)}>
@@ -99,13 +102,13 @@ export default function Dashboard() {
               <Spinner size="lg" color="blue.500" />
             </Box>
           ) : pacientesFiltrados.length === 0 ? (
-            <Text color="gray.500" textAlign="center" py={10}>
+            <Text color="text.muted" textAlign="center" py={10}>
               {busqueda ? "No se encontraron pacientes." : "No hay pacientes registrados."}
             </Text>
           ) : (
             <Table.Root size="md">
               <Table.Header>
-                <Table.Row bg="gray.50">
+                <Table.Row bg="bg.muted">
                   <Table.ColumnHeader fontWeight="600">Nombre Completo</Table.ColumnHeader>
                   <Table.ColumnHeader fontWeight="600">DNI</Table.ColumnHeader>
                   <Table.ColumnHeader fontWeight="600">Edad</Table.ColumnHeader>
@@ -125,7 +128,7 @@ export default function Dashboard() {
                     <Table.Row
                       key={p.id}
                       cursor="pointer"
-                      _hover={{ bg: "blue.50" }}
+                      _hover={{ bg: "bg.hover" }}
                       onClick={() => navigate(`/paciente/${p.id}`)}
                     >
                       <Table.Cell fontWeight="500">{p.Nombre_Completo}</Table.Cell>
@@ -168,6 +171,7 @@ export default function Dashboard() {
         open={mostrarCrear}
         onClose={() => setMostrarCrear(false)}
         onCreated={fetchPacientes}
+        geriatrico_id={geriatrico?.id}
       />
     </Box>
   )

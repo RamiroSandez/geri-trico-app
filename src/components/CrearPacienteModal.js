@@ -26,12 +26,11 @@ const FORM_INICIAL = {
   numero_afiliado: "",
   fecha_nacimiento: "",
   diagnostico: "",
-  nombre_geriatrico: "",
   telefono_contacto: "",
   nombre_contacto: "",
 }
 
-export default function CrearPacienteModal({ open, onClose, onCreated }) {
+export default function CrearPacienteModal({ open, onClose, onCreated, geriatrico_id }) {
   const [form, setForm] = useState(FORM_INICIAL)
   const [guardando, setGuardando] = useState(false)
 
@@ -47,6 +46,7 @@ export default function CrearPacienteModal({ open, onClose, onCreated }) {
       ...form,
       fecha_nacimiento: form.fecha_nacimiento || null,
       estado_amparo: "preparando_documentacion",
+      geriatrico_id,
     }])
     setGuardando(false)
     if (error) {
@@ -108,14 +108,6 @@ export default function CrearPacienteModal({ open, onClose, onCreated }) {
                   type="date"
                   value={form.fecha_nacimiento}
                   onChange={e => set("fecha_nacimiento", e.target.value)}
-                />
-              </FieldRoot>
-              <FieldRoot>
-                <FieldLabel fontSize="sm">Geriátrico / Institución</FieldLabel>
-                <Input
-                  value={form.nombre_geriatrico}
-                  onChange={e => set("nombre_geriatrico", e.target.value)}
-                  placeholder="Nombre del geriátrico"
                 />
               </FieldRoot>
               <FieldRoot>
