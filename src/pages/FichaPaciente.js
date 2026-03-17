@@ -148,6 +148,9 @@ export default function FichaPaciente() {
         obra_social: paciente.Obra_social,
         numero_afiliado: paciente.numero_afiliado,
         fecha_nacimiento: paciente.fecha_nacimiento,
+        edad: paciente.fecha_nacimiento
+          ? Math.floor((new Date() - new Date(paciente.fecha_nacimiento)) / (365.25 * 24 * 60 * 60 * 1000))
+          : null,
         diagnostico: paciente.diagnostico,
         nombre_geriatrico: paciente.nombre_geriatrico,
         estado_amparo: form.estado_amparo,

@@ -108,6 +108,7 @@ export default function Dashboard() {
                 <Table.Row bg="gray.50">
                   <Table.ColumnHeader fontWeight="600">Nombre Completo</Table.ColumnHeader>
                   <Table.ColumnHeader fontWeight="600">DNI</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="600">Edad</Table.ColumnHeader>
                   <Table.ColumnHeader fontWeight="600">Obra Social</Table.ColumnHeader>
                   <Table.ColumnHeader fontWeight="600">Estado Amparo</Table.ColumnHeader>
                   <Table.ColumnHeader></Table.ColumnHeader>
@@ -117,6 +118,9 @@ export default function Dashboard() {
                 {pacientesFiltrados.map(p => {
                   const estadoKey = p.estado_amparo || "preparando_documentacion"
                   const estado = ESTADOS_AMPARO[estadoKey] || ESTADOS_AMPARO.preparando_documentacion
+                  const edad = p.fecha_nacimiento
+                    ? Math.floor((new Date() - new Date(p.fecha_nacimiento)) / (365.25 * 24 * 60 * 60 * 1000))
+                    : null
                   return (
                     <Table.Row
                       key={p.id}
@@ -126,6 +130,7 @@ export default function Dashboard() {
                     >
                       <Table.Cell fontWeight="500">{p.Nombre_Completo}</Table.Cell>
                       <Table.Cell>{p.dni}</Table.Cell>
+                      <Table.Cell>{edad !== null ? `${edad} años` : "—"}</Table.Cell>
                       <Table.Cell>{p.Obra_social}</Table.Cell>
                       <Table.Cell>
                         <Badge
