@@ -120,11 +120,11 @@ export default function FichaPaciente() {
   }
 
   const generarAmparo = async () => {
-    const webhookUrl = process.env.REACT_APP_N8N_WEBHOOK_URL
+    const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL
     if (!webhookUrl) {
       toaster.create({
         title: "Webhook no configurado",
-        description: "Agregá REACT_APP_N8N_WEBHOOK_URL en el archivo .env",
+        description: "Agregá VITE_N8N_WEBHOOK_URL en el archivo .env",
         type: "warning",
         duration: 5000,
       })

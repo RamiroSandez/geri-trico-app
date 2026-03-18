@@ -38,7 +38,7 @@ export default function Dashboard() {
     setCargando(false)
   }
 
-  useEffect(() => { fetchPacientes() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (geriatrico?.id) fetchPacientes() }, [geriatrico?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pacientesFiltrados = pacientes.filter(p =>
     p.Nombre_Completo?.toLowerCase().includes(busqueda.toLowerCase()) ||

@@ -84,7 +84,7 @@ export default function Gastos() {
     setCargando(false)
   }
 
-  useEffect(() => { fetchGastos() }, [filtroMes]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (geriatrico?.id) fetchGastos() }, [filtroMes, geriatrico?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const formVacio = { categoria: "medicamentos", descripcion: "", monto: "", fecha: new Date().toISOString().split("T")[0], proveedor: "", notas: "" }
 
