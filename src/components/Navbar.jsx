@@ -44,7 +44,7 @@ export default function Navbar() {
   const { geriatrico, logout, rol } = useAuth()
   const NAV_LINKS = [
     { label: "Pacientes", path: "/" },
-    ...(rol === "admin" ? [{ label: "Gastos", path: "/gastos" }] : []),
+    ...(["admin", "gerente"].includes(rol) ? [{ label: "Gastos", path: "/gastos" }] : []),
     ...(rol === "admin" ? [{ label: "Equipo", path: "/equipo" }] : []),
   ]
   const [dark, setDark] = useState(() => localStorage.getItem("geri-theme") === "dark")
