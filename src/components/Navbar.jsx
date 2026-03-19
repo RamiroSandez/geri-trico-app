@@ -3,11 +3,6 @@ import { Box, HStack, Text } from "@chakra-ui/react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 
-const NAV_LINKS = [
-  { label: "Pacientes", path: "/" },
-  { label: "Gastos", path: "/gastos" },
-]
-
 function SunIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -46,7 +41,12 @@ function NotificationBell() {
 export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { geriatrico, logout } = useAuth()
+  const { geriatrico, logout, rol } = useAuth()
+  const NAV_LINKS = [
+    { label: "Pacientes", path: "/" },
+    ...(rol === "admin" ? [{ label: "Gastos", path: "/gastos" }] : []),
+    ...(rol === "admin" ? [{ label: "Equipo", path: "/equipo" }] : []),
+  ]
   const [dark, setDark] = useState(() => localStorage.getItem("geri-theme") === "dark")
 
   useEffect(() => {

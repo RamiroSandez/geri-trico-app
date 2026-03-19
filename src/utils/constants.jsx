@@ -36,3 +36,9 @@ export const COLOR_TIPO_DOCUMENTO = {
   poder_notarial: 'cyan',
   otro: 'gray',
 }
+
+export const ROLES_GERIATRICO = {
+  admin: { label: "Administrador", color: "blue" },
+  gerente: { label: "Gerente", color: "purple" },
+  profesional: { label: "Profesional", color: "green" },
+}

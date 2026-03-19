@@ -8,6 +8,7 @@ import FichaPaciente from "./pages/FichaPaciente"
 import Gastos from "./pages/Gastos"
 import Login from "./pages/Login"
 import Registro from "./pages/Registro"
+import Equipo from "./pages/Equipo"
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/paciente/:id" element={<FichaPaciente />} />
                   <Route path="/gastos" element={<Gastos />} />
+                  <Route path="/equipo" element={<Equipo />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Box>
