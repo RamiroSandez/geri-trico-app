@@ -24,15 +24,17 @@ function App() {
           <Route path="/registro" element={<Registro />} />
           <Route path="/*" element={
             <ProtectedRoute>
-              <Box minH="100vh" bg="bg.page">
+              <Box minH="100vh" bg="bg.page" display="flex">
                 <Navbar />
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/paciente/:id" element={<FichaPaciente />} />
-                  <Route path="/gastos" element={<RolRoute roles={["admin", "gerente"]}><Gastos /></RolRoute>} />
-                  <Route path="/equipo" element={<RolRoute roles={["admin"]}><Equipo /></RolRoute>} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                <Box flex={1} ml="220px" minH="100vh">
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/paciente/:id" element={<FichaPaciente />} />
+                    <Route path="/gastos" element={<RolRoute roles={["admin", "gerente"]}><Gastos /></RolRoute>} />
+                    <Route path="/equipo" element={<RolRoute roles={["admin"]}><Equipo /></RolRoute>} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Box>
               </Box>
             </ProtectedRoute>
           } />
