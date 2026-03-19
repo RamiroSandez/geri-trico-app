@@ -35,8 +35,8 @@ export default function Login() {
 
         {/* Logo */}
         <Stack align="center" mb={8} gap={2}>
-          <img src="/favicon.png" alt="GeriManager" style={{ width: 72, height: 72, borderRadius: 16 }} />
-          <Heading size="lg" color="text.main" letterSpacing="tight">GeriManager</Heading>
+          <img src="/favicon.png" alt="Domus" style={{ width: 72, height: 72, borderRadius: 16 }} />
+          <Heading size="lg" color="text.main" letterSpacing="tight">Domus</Heading>
           <Text fontSize="sm" color="text.muted">Sistema de gestión geriátrica</Text>
         </Stack>
 
@@ -67,7 +67,7 @@ export default function Login() {
         </Card.Root>
 
         <Text textAlign="center" mt={6} fontSize="xs" color="text.faint">
-          Al ingresar aceptás los términos de uso de GeriManager
+          Al ingresar aceptás los términos de uso de Domus
         </Text>
       </Box>
     </Box>

@@ -54,7 +54,7 @@ export default function Registro() {
     if (error) {
       toaster.create({ title: "Error al guardar", description: error.message, type: "error", duration: 5000 })
     } else {
-      toaster.create({ title: "¡Geriátrico creado!", description: "Bienvenido a GeriManager", type: "success", duration: 2000 })
+      toaster.create({ title: "¡Geriátrico creado!", description: "Bienvenido a Domus", type: "success", duration: 2000 })
       navigate("/")
     }
   }
@@ -64,8 +64,8 @@ export default function Registro() {
       <Toaster />
       <Box w="full" maxW="480px">
         <Stack align="center" mb={8} gap={2}>
-          <img src="/favicon.png" alt="GeriManager" style={{ width: 72, height: 72, borderRadius: 16 }} />
-          <Heading size="lg" color="text.main" letterSpacing="tight">GeriManager</Heading>
+          <img src="/favicon.png" alt="Domus" style={{ width: 72, height: 72, borderRadius: 16 }} />
+          <Heading size="lg" color="text.main" letterSpacing="tight">Domus</Heading>
           <Text fontSize="sm" color="text.muted">
             Hola {user?.user_metadata?.full_name || user?.email}
           </Text>

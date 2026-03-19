@@ -111,10 +111,10 @@ export default function Navbar() {
       {/* Logo */}
       <Box px={5} py={5} borderBottom="1px solid" borderColor="border.subtle">
         <Box display="flex" alignItems="center" gap={3} cursor="pointer" onClick={() => navigate("/")}>
-          <img src="/favicon.png" alt="GeriManager" style={{ width: 36, height: 36, borderRadius: 10 }} />
+          <img src="/favicon.png" alt="Domus" style={{ width: 36, height: 36, borderRadius: 10 }} />
           <Box>
             <Text fontWeight="800" fontSize="sm" color="text.main" letterSpacing="tight" lineHeight="1.1">
-              GeriManager
+              Domus
             </Text>
             <Text fontSize="10px" color="text.faint" lineHeight="1.2" noOfLines={1}>
               {geriatrico?.nombre || "Mi Geriátrico"}
