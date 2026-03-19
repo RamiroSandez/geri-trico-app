@@ -1,9 +1,10 @@
-import { Navigate } from "react-router-dom"
+import { Navigate, useLocation } from "react-router-dom"
 import { Box, Spinner } from "@chakra-ui/react"
 import { useAuth } from "../contexts/AuthContext"
 
 export default function ProtectedRoute({ children }) {
-  const { user, cargando } = useAuth()
+  const { user, cargando, setupPendiente } = useAuth()
+  const location = useLocation()
 
   if (cargando) {
     return (
@@ -14,6 +15,10 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
+
+  if (setupPendiente && location.pathname !== "/registro") {
+    return <Navigate to="/registro" replace />
+  }
 
   return children
 }

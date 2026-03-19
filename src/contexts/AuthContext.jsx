@@ -15,13 +15,14 @@ export function AuthProvider({ children }) {
       .eq("user_id", userId)
       .single()
     setGeriatrico(data || null)
+    return data
   }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchGeriatrico(session.user.id)
-      setCargando(false)
+      if (session?.user) fetchGeriatrico(session.user.id).then(() => setCargando(false))
+      else setCargando(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -33,28 +34,27 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const loginConGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    })
     return { error }
   }
 
-  const registro = async ({ email, password, nombreGeriatrico, nombreDirector, telefono }) => {
-    const { error: errorSignUp } = await supabase.auth.signUp({ email, password })
-    if (errorSignUp) return { error: errorSignUp }
+  const crearGeriatrico = async ({ nombreGeriatrico, nombreDirector, telefono }) => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser()
+    if (!currentUser) return { error: new Error("No hay sesión activa") }
 
-    // Login inmediato para obtener sesión activa
-    const { data, error: errorLogin } = await supabase.auth.signInWithPassword({ email, password })
-    if (errorLogin) return { error: errorLogin }
-
-    const { error: errorGeriatrico } = await supabase.from("geriatricos").insert({
-      user_id: data.user.id,
+    const { error } = await supabase.from("geriatricos").insert({
+      user_id: currentUser.id,
       nombre: nombreGeriatrico,
       nombre_director: nombreDirector,
       telefono: telefono || null,
     })
-    if (errorGeriatrico) return { error: errorGeriatrico }
+    if (error) return { error }
 
-    await fetchGeriatrico(data.user.id)
+    await fetchGeriatrico(currentUser.id)
     return { error: null }
   }
 
@@ -64,8 +64,10 @@ export function AuthProvider({ children }) {
     setGeriatrico(null)
   }
 
+  const setupPendiente = !cargando && !!user && !geriatrico
+
   return (
-    <AuthContext.Provider value={{ user, geriatrico, cargando, login, registro, logout }}>
+    <AuthContext.Provider value={{ user, geriatrico, cargando, setupPendiente, loginConGoogle, crearGeriatrico, logout }}>
       {children}
     </AuthContext.Provider>
   )

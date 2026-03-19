@@ -1,41 +1,30 @@
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { Box, Button, Card, FieldLabel, FieldRoot, Grid, Heading, Input, Stack, Text } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
 import { useAuth } from "../contexts/AuthContext"
 
 export default function Registro() {
-  const [form, setForm] = useState({
-    email: "", password: "", confirmar: "",
-    nombreGeriatrico: "", nombreDirector: "", telefono: "",
-  })
+  const [form, setForm] = useState({ nombreGeriatrico: "", nombreDirector: "", telefono: "" })
   const [cargando, setCargando] = useState(false)
-  const { registro } = useAuth()
+  const { crearGeriatrico, user, logout } = useAuth()
   const navigate = useNavigate()
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
-  const handleRegistro = async (e) => {
+  const handleSetup = async (e) => {
     e.preventDefault()
-    if (!form.email || !form.password || !form.nombreGeriatrico || !form.nombreDirector) {
-      toaster.create({ title: "Completá todos los campos obligatorios", type: "warning", duration: 3000 })
-      return
-    }
-    if (form.password !== form.confirmar) {
-      toaster.create({ title: "Las contraseñas no coinciden", type: "error", duration: 3000 })
-      return
-    }
-    if (form.password.length < 6) {
-      toaster.create({ title: "La contraseña debe tener al menos 6 caracteres", type: "warning", duration: 3000 })
+    if (!form.nombreGeriatrico || !form.nombreDirector) {
+      toaster.create({ title: "Completá nombre del geriátrico y del director", type: "warning", duration: 3000 })
       return
     }
     setCargando(true)
-    const { error } = await registro(form)
+    const { error } = await crearGeriatrico(form)
     setCargando(false)
     if (error) {
-      toaster.create({ title: "Error al registrarse", description: error.message, type: "error", duration: 5000 })
+      toaster.create({ title: "Error al guardar", description: error.message, type: "error", duration: 5000 })
     } else {
-      toaster.create({ title: "¡Cuenta creada!", description: "Bienvenido a GeriManager", type: "success", duration: 3000 })
+      toaster.create({ title: "¡Geriátrico creado!", description: "Bienvenido a GeriManager", type: "success", duration: 2000 })
       navigate("/")
     }
   }
@@ -43,7 +32,7 @@ export default function Registro() {
   return (
     <Box minH="100vh" bg="bg.page" display="flex" alignItems="center" justifyContent="center" px={4} py={8}>
       <Toaster />
-      <Box w="full" maxW="520px">
+      <Box w="full" maxW="480px">
 
         {/* Logo */}
         <Stack align="center" mb={8} gap={2}>
@@ -60,102 +49,55 @@ export default function Registro() {
             GM
           </Box>
           <Heading size="lg" color="text.main" letterSpacing="tight">GeriManager</Heading>
-          <Text fontSize="sm" color="text.muted">Registrá tu geriátrico</Text>
+          <Text fontSize="sm" color="text.muted">
+            Hola {user?.user_metadata?.full_name || user?.email} — Configurá tu geriátrico
+          </Text>
         </Stack>
 
         <Card.Root bg="bg.panel" borderRadius="2xl" boxShadow="lg" border="1px solid" borderColor="border.subtle">
           <Card.Body p={8}>
-            <form onSubmit={handleRegistro}>
-              <Stack gap={6}>
+            <form onSubmit={handleSetup}>
+              <Stack gap={5}>
+                <Text fontSize="xs" fontWeight="700" color="blue.600" textTransform="uppercase" letterSpacing="wide">
+                  Datos del geriátrico
+                </Text>
 
-                {/* Datos del geriátrico */}
-                <Box>
-                  <Text fontSize="xs" fontWeight="700" color="blue.600" textTransform="uppercase" letterSpacing="wide" mb={3}>
-                    Datos del geriátrico
-                  </Text>
-                  <Grid templateColumns={{ base: "1fr", sm: "1fr 1fr" }} gap={4}>
-                    <FieldRoot gridColumn={{ sm: "span 2" }}>
-                      <FieldLabel fontSize="sm" color="text.main">Nombre del geriátrico *</FieldLabel>
-                      <Input
-                        placeholder='Ej: Residencia "Del Este"'
-                        value={form.nombreGeriatrico}
-                        onChange={e => set("nombreGeriatrico", e.target.value)}
-                        bg="bg.muted"
-                        border="1px solid"
-                        borderColor="border.subtle"
-                      />
-                    </FieldRoot>
-                    <FieldRoot>
-                      <FieldLabel fontSize="sm" color="text.main">Nombre del director *</FieldLabel>
-                      <Input
-                        placeholder="Dr. Apellido"
-                        value={form.nombreDirector}
-                        onChange={e => set("nombreDirector", e.target.value)}
-                        bg="bg.muted"
-                        border="1px solid"
-                        borderColor="border.subtle"
-                      />
-                    </FieldRoot>
-                    <FieldRoot>
-                      <FieldLabel fontSize="sm" color="text.main">Teléfono</FieldLabel>
-                      <Input
-                        placeholder="11 1234-5678"
-                        value={form.telefono}
-                        onChange={e => set("telefono", e.target.value)}
-                        bg="bg.muted"
-                        border="1px solid"
-                        borderColor="border.subtle"
-                      />
-                    </FieldRoot>
-                  </Grid>
-                </Box>
+                <FieldRoot>
+                  <FieldLabel fontSize="sm" color="text.main">Nombre del geriátrico *</FieldLabel>
+                  <Input
+                    placeholder='Ej: Residencia "Del Este"'
+                    value={form.nombreGeriatrico}
+                    onChange={e => set("nombreGeriatrico", e.target.value)}
+                    bg="bg.muted"
+                    border="1px solid"
+                    borderColor="border.subtle"
+                  />
+                </FieldRoot>
 
-                {/* Datos de acceso */}
-                <Box>
-                  <Text fontSize="xs" fontWeight="700" color="blue.600" textTransform="uppercase" letterSpacing="wide" mb={3}>
-                    Datos de acceso
-                  </Text>
-                  <Stack gap={4}>
-                    <FieldRoot>
-                      <FieldLabel fontSize="sm" color="text.main">Email *</FieldLabel>
-                      <Input
-                        type="email"
-                        placeholder="director@geriatrico.com"
-                        value={form.email}
-                        onChange={e => set("email", e.target.value)}
-                        bg="bg.muted"
-                        border="1px solid"
-                        borderColor="border.subtle"
-                      />
-                    </FieldRoot>
-                    <Grid templateColumns="1fr 1fr" gap={4}>
-                      <FieldRoot>
-                        <FieldLabel fontSize="sm" color="text.main">Contraseña *</FieldLabel>
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          value={form.password}
-                          onChange={e => set("password", e.target.value)}
-                          bg="bg.muted"
-                          border="1px solid"
-                          borderColor="border.subtle"
-                        />
-                      </FieldRoot>
-                      <FieldRoot>
-                        <FieldLabel fontSize="sm" color="text.main">Confirmar *</FieldLabel>
-                        <Input
-                          type="password"
-                          placeholder="••••••••"
-                          value={form.confirmar}
-                          onChange={e => set("confirmar", e.target.value)}
-                          bg="bg.muted"
-                          border="1px solid"
-                          borderColor="border.subtle"
-                        />
-                      </FieldRoot>
-                    </Grid>
-                  </Stack>
-                </Box>
+                <Grid templateColumns="1fr 1fr" gap={4}>
+                  <FieldRoot>
+                    <FieldLabel fontSize="sm" color="text.main">Nombre del director *</FieldLabel>
+                    <Input
+                      placeholder="Dr. Apellido"
+                      value={form.nombreDirector}
+                      onChange={e => set("nombreDirector", e.target.value)}
+                      bg="bg.muted"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                    />
+                  </FieldRoot>
+                  <FieldRoot>
+                    <FieldLabel fontSize="sm" color="text.main">Teléfono</FieldLabel>
+                    <Input
+                      placeholder="11 1234-5678"
+                      value={form.telefono}
+                      onChange={e => set("telefono", e.target.value)}
+                      bg="bg.muted"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                    />
+                  </FieldRoot>
+                </Grid>
 
                 <Button
                   type="submit"
@@ -163,19 +105,25 @@ export default function Registro() {
                   size="lg"
                   w="full"
                   loading={cargando}
+                  mt={2}
                 >
-                  Crear cuenta
+                  Crear geriátrico
                 </Button>
               </Stack>
             </form>
           </Card.Body>
         </Card.Root>
 
-        <Text textAlign="center" mt={6} fontSize="sm" color="text.muted">
-          ¿Ya tenés cuenta?{" "}
-          <Link to="/login" style={{ color: "#3182CE", fontWeight: 600 }}>
-            Ingresá acá
-          </Link>
+        <Text
+          textAlign="center"
+          mt={4}
+          fontSize="sm"
+          color="text.muted"
+          cursor="pointer"
+          _hover={{ color: "text.main" }}
+          onClick={logout}
+        >
+          Cerrar sesión
         </Text>
       </Box>
     </Box>

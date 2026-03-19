@@ -1,30 +1,31 @@
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { Box, Button, Card, FieldLabel, FieldRoot, Heading, Input, Stack, Text } from "@chakra-ui/react"
+import { Box, Button, Card, Heading, Spinner, Stack, Text } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
 import { useAuth } from "../contexts/AuthContext"
 
-export default function Login() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [cargando, setCargando] = useState(false)
-  const { login } = useAuth()
-  const navigate = useNavigate()
+function GoogleIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+  )
+}
 
-  const handleLogin = async (e) => {
-    e.preventDefault()
-    if (!email || !password) {
-      toaster.create({ title: "Completá email y contraseña", type: "warning", duration: 3000 })
-      return
-    }
+export default function Login() {
+  const [cargando, setCargando] = useState(false)
+  const { loginConGoogle } = useAuth()
+
+  const handleGoogle = async () => {
     setCargando(true)
-    const { error } = await login(email, password)
-    setCargando(false)
+    const { error } = await loginConGoogle()
     if (error) {
-      toaster.create({ title: "Error al ingresar", description: "Email o contraseña incorrectos", type: "error", duration: 4000 })
-    } else {
-      navigate("/")
+      setCargando(false)
+      toaster.create({ title: "Error al iniciar sesión", description: error.message, type: "error", duration: 4000 })
     }
+    // Si no hay error, Supabase redirige a Google (la página se va)
   }
 
   return (
@@ -47,60 +48,37 @@ export default function Login() {
             GM
           </Box>
           <Heading size="lg" color="text.main" letterSpacing="tight">GeriManager</Heading>
-          <Text fontSize="sm" color="text.muted">Ingresá a tu cuenta</Text>
+          <Text fontSize="sm" color="text.muted">Sistema de gestión geriátrica</Text>
         </Stack>
 
         {/* Card */}
         <Card.Root bg="bg.panel" borderRadius="2xl" boxShadow="lg" border="1px solid" borderColor="border.subtle">
           <Card.Body p={8}>
-            <form onSubmit={handleLogin}>
-              <Stack gap={5}>
-                <FieldRoot>
-                  <FieldLabel fontSize="sm" color="text.main">Email</FieldLabel>
-                  <Input
-                    type="email"
-                    placeholder="director@geriatrico.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    size="lg"
-                    bg="bg.muted"
-                    border="1px solid"
-                    borderColor="border.subtle"
-                  />
-                </FieldRoot>
-                <FieldRoot>
-                  <FieldLabel fontSize="sm" color="text.main">Contraseña</FieldLabel>
-                  <Input
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    size="lg"
-                    bg="bg.muted"
-                    border="1px solid"
-                    borderColor="border.subtle"
-                  />
-                </FieldRoot>
-                <Button
-                  type="submit"
-                  colorPalette="blue"
-                  size="lg"
-                  w="full"
-                  loading={cargando}
-                  mt={2}
-                >
-                  Ingresar
-                </Button>
-              </Stack>
-            </form>
+            <Stack gap={4} align="center">
+              <Text fontSize="sm" color="text.muted" textAlign="center">
+                Ingresá con tu cuenta de Google para acceder a tu geriátrico
+              </Text>
+              <Button
+                w="full"
+                size="lg"
+                variant="outline"
+                borderColor="border.subtle"
+                bg="bg.panel"
+                color="text.main"
+                _hover={{ bg: "bg.muted" }}
+                onClick={handleGoogle}
+                disabled={cargando}
+                gap={3}
+              >
+                {cargando ? <Spinner size="sm" /> : <GoogleIcon />}
+                Continuar con Google
+              </Button>
+            </Stack>
           </Card.Body>
         </Card.Root>
 
-        <Text textAlign="center" mt={6} fontSize="sm" color="text.muted">
-          ¿No tenés cuenta?{" "}
-          <Link to="/registro" style={{ color: "#3182CE", fontWeight: 600 }}>
-            Registrá tu geriátrico
-          </Link>
+        <Text textAlign="center" mt={6} fontSize="xs" color="text.faint">
+          Al ingresar aceptás los términos de uso de GeriManager
         </Text>
       </Box>
     </Box>
