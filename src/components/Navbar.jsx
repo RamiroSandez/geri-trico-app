@@ -80,18 +80,7 @@ export default function Navbar() {
         {/* Logo */}
         <HStack gap={3}>
           <HStack gap={2} cursor="pointer" onClick={() => navigate("/")}>
-            <Box
-              bg="blue.600"
-              color="white"
-              fontWeight="800"
-              fontSize="xs"
-              px={2}
-              py={1}
-              borderRadius="md"
-              letterSpacing="wide"
-            >
-              GM
-            </Box>
+            <img src="/favicon.png" alt="GeriManager" style={{ width: 32, height: 32, borderRadius: 8 }} />
             <Text fontWeight="700" fontSize="md" color="text.main" letterSpacing="tight">
               GeriManager
             </Text>

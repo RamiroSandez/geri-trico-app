@@ -35,18 +35,7 @@ export default function Login() {
 
         {/* Logo */}
         <Stack align="center" mb={8} gap={2}>
-          <Box
-            bg="blue.600"
-            color="white"
-            fontWeight="800"
-            fontSize="xl"
-            px={4}
-            py={2}
-            borderRadius="xl"
-            letterSpacing="wide"
-          >
-            GM
-          </Box>
+          <img src="/favicon.png" alt="GeriManager" style={{ width: 72, height: 72, borderRadius: 16 }} />
           <Heading size="lg" color="text.main" letterSpacing="tight">GeriManager</Heading>
           <Text fontSize="sm" color="text.muted">Sistema de gestión geriátrica</Text>
         </Stack>
