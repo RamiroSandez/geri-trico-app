@@ -162,9 +162,6 @@ export default function Gastos() {
   }
 
   const totalMes = gastos.reduce((acc, g) => acc + Number(g.monto), 0)
-  const diasEnMes = new Date(...filtroMes.split("-").map((v, i) => i === 1 ? Number(v) : Number(v)), 0).getDate()
-  const promedioDiario = gastos.length > 0 ? totalMes / diasEnMes : 0
-
   const variacion = totalMesAnterior > 0
     ? Math.round(((totalMes - totalMesAnterior) / totalMesAnterior) * 100)
     : null
@@ -276,14 +273,6 @@ export default function Gastos() {
                 {variacion > 0 ? "▲" : variacion < 0 ? "▼" : "="} {Math.abs(variacion)}% vs mes anterior
               </Text>
             )}
-          </Card.Body>
-        </Card.Root>
-
-        <Card.Root borderRadius="xl" boxShadow="sm" bg="bg.panel">
-          <Card.Body py={5} px={5}>
-            <Text fontSize="xs" color="text.faint" mb={1} fontWeight="500">Promedio diario</Text>
-            <Text fontSize="xl" fontWeight="700" color="text.main">{formatPesos(promedioDiario)}</Text>
-            <Text fontSize="xs" color="text.faint" mt={1}>por día este mes</Text>
           </Card.Body>
         </Card.Root>
 
