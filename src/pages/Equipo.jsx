@@ -15,7 +15,7 @@ export default function Equipo() {
   const [invitaciones, setInvitaciones] = useState([])
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
-  const [form, setForm] = useState({ email: "", rol: "enfermero" })
+  const [form, setForm] = useState({ email: "", rol: "profesional" })
 
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
@@ -48,7 +48,7 @@ export default function Equipo() {
       toaster.create({ title: "Error al invitar", description: error.message, type: "error", duration: 4000 })
     } else {
       toaster.create({ title: "Invitación creada", description: `Se invitó a ${form.email}`, type: "success", duration: 3000 })
-      setForm({ email: "", rol: "enfermero" })
+      setForm({ email: "", rol: "profesional" })
       fetchData()
     }
   }
@@ -131,7 +131,7 @@ export default function Equipo() {
                 </Table.Header>
                 <Table.Body>
                   {miembros.map(m => {
-                    const rolInfo = ROLES_GERIATRICO[m.rol] || ROLES_GERIATRICO.enfermero
+                    const rolInfo = ROLES_GERIATRICO[m.rol] || ROLES_GERIATRICO.profesional
                     const esYo = m.user_id === user?.id
                     return (
                       <Table.Row key={m.id} _hover={{ bg: "bg.hover" }}>
@@ -176,7 +176,7 @@ export default function Equipo() {
                   </Table.Header>
                   <Table.Body>
                     {invitaciones.map(inv => {
-                      const rolInfo = ROLES_GERIATRICO[inv.rol] || ROLES_GERIATRICO.enfermero
+                      const rolInfo = ROLES_GERIATRICO[inv.rol] || ROLES_GERIATRICO.profesional
                       return (
                         <Table.Row key={inv.id} _hover={{ bg: "bg.hover" }}>
                           <Table.Cell pl={4} fontSize="sm">{inv.email}</Table.Cell>

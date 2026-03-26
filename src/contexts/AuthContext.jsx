@@ -44,14 +44,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchGeriatrico(session.user.id).then(() => setCargando(false))
-      else setCargando(false)
+      if (session?.user) {
+        fetchGeriatrico(session.user.id).then(() => setCargando(false))
+      } else setCargando(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchGeriatrico(session.user.id)
-      else { setGeriatrico(null); setRol(null) }
+      if (session?.user) {
+        fetchGeriatrico(session.user.id)
+      } else { setGeriatrico(null); setRol(null) }
     })
 
     return () => subscription.unsubscribe()

@@ -98,11 +98,8 @@ export default function Navbar() {
   const [dark, setDark] = useState(() => localStorage.getItem("geri-theme") === "dark")
 
   useEffect(() => {
-    const saved = localStorage.getItem("geri-theme") || "light"
-    const isDark = saved === "dark"
-    setDark(isDark)
-    document.documentElement.classList.toggle("dark", isDark)
-  }, [])
+    document.documentElement.classList.toggle("dark", dark)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleDark = () => {
     const next = !dark

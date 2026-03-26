@@ -45,7 +45,6 @@ export default function CrearPacienteModal({ open, onClose, onCreated, geriatric
     const { error } = await supabase.from("Pacientes").insert([{
       ...form,
       fecha_nacimiento: form.fecha_nacimiento || null,
-      estado_amparo: "preparando_documentacion",
       geriatrico_id,
     }])
     setGuardando(false)
