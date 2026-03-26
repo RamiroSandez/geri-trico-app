@@ -23,7 +23,7 @@ import {
 import { Toaster, toaster } from "../components/toaster"
 import DocumentosPanel from "../components/DocumentosPanel"
 import PreviewAmparoModal from "../components/PreviewAmparoModal"
-import { ESTADOS_AMPARO } from "../utils/constants"
+import { ESTADOS_AMPARO, validarCamposAmparo } from "../utils/constants"
 import { useAuth } from "../contexts/AuthContext"
 
 export default function FichaPaciente() {
@@ -133,6 +133,16 @@ export default function FichaPaciente() {
   }
 
   const generarAmparo = async (amparo) => {
+    const faltantes = validarCamposAmparo(paciente)
+    if (faltantes.length > 0) {
+      toaster.create({
+        title: "Faltan datos del paciente",
+        description: `Completá: ${faltantes.join(", ")}`,
+        type: "warning",
+        duration: 6000,
+      })
+      return
+    }
     setGenerando(amparo.id)
     try {
       const { data: { session } } = await supabase.auth.getSession()

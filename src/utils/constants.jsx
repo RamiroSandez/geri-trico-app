@@ -37,6 +37,20 @@ export const COLOR_TIPO_DOCUMENTO = {
   otro: 'gray',
 }
 
+export const CAMPOS_REQUERIDOS_AMPARO = [
+  { key: "Nombre_Completo", label: "Nombre completo" },
+  { key: "dni",             label: "DNI" },
+  { key: "Obra_social",     label: "Obra social" },
+  { key: "fecha_nacimiento",label: "Fecha de nacimiento" },
+  { key: "diagnostico",     label: "Diagnóstico" },
+  { key: "motivo_ingreso",  label: "Motivo de ingreso" },
+]
+
+export const validarCamposAmparo = (paciente) =>
+  CAMPOS_REQUERIDOS_AMPARO
+    .filter(({ key }) => !paciente?.[key])
+    .map(({ label }) => label)
+
 export const ROLES_GERIATRICO = {
   admin: { label: "Administrador", color: "blue" },
   gerente: { label: "Gerente", color: "purple" },

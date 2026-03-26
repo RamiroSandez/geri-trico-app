@@ -7,7 +7,7 @@ import {
   Heading, HStack, Input, NativeSelect, Spinner, Stack, Table, Text,
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
-import { ESTADOS_AMPARO } from "../utils/constants"
+import { ESTADOS_AMPARO, validarCamposAmparo } from "../utils/constants"
 import PreviewAmparoModal from "../components/PreviewAmparoModal"
 
 export default function Amparos() {
@@ -83,8 +83,18 @@ export default function Amparos() {
   }
 
   const generarAmparo = async (amparo) => {
-    setGenerando(amparo.id)
     const paciente = amparo.Pacientes
+    const faltantes = validarCamposAmparo(paciente)
+    if (faltantes.length > 0) {
+      toaster.create({
+        title: "Faltan datos del paciente",
+        description: `Completá: ${faltantes.join(", ")}`,
+        type: "warning",
+        duration: 6000,
+      })
+      return
+    }
+    setGenerando(amparo.id)
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generar-amparo`, {
