@@ -182,7 +182,7 @@ export default function Amparos() {
     setGenerando(null)
   }
 
-  const descargarZipMes = async (amparosDelMes, labelMes, keyMes) => {
+  const descargarZipMes = async (pacientesPorMes, labelMes, keyMes) => {
     setDescargandoZip(keyMes)
     try {
       const session = await obtenerSession()
@@ -190,20 +190,24 @@ export default function Amparos() {
       const JSZip = (await import("jszip")).default
       const zip = new JSZip()
 
-      for (const amparo of amparosDelMes) {
-        const paciente = amparo.Pacientes
-        const faltantes = validarCamposAmparo(paciente)
-        if (faltantes.length > 0) continue // saltar amparos incompletos
-        try {
-          const html = await fetchHtmlAmparo(paciente, session)
-          const container = document.createElement("div")
-          container.innerHTML = html
-          const worker = html2pdf().set(PDF_OPTS).from(container)
-          const pdf = await worker.toPdf().get("pdf")
-          const blob = pdf.output("blob")
-          zip.file(`Amparo - ${paciente.Nombre_Completo}.pdf`, blob)
-        } catch {
-          // si falla uno, seguir con los demás
+      for (const { nombre, amparos: lista } of Object.values(pacientesPorMes)) {
+        const carpeta = zip.folder(nombre)
+        for (const amparo of lista) {
+          const paciente = amparo.Pacientes
+          const faltantes = validarCamposAmparo(paciente)
+          if (faltantes.length > 0) continue
+          try {
+            const html = await fetchHtmlAmparo(paciente, session)
+            const container = document.createElement("div")
+            container.innerHTML = html
+            const worker = html2pdf().set(PDF_OPTS).from(container)
+            const pdf = await worker.toPdf().get("pdf")
+            const blob = pdf.output("blob")
+            const fecha = new Date(amparo.created_at).toLocaleDateString("es-AR").replace(/\//g, "-")
+            carpeta.file(`Amparo - ${nombre} - ${fecha}.pdf`, blob)
+          } catch {
+            // si falla uno, continuar con los demás
+          }
         }
       }
 
@@ -229,8 +233,10 @@ export default function Amparos() {
     const d = new Date(a.created_at)
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     const label = d.toLocaleString("es-AR", { month: "long", year: "numeric" })
-    if (!acc[key]) acc[key] = { label, amparos: [] }
-    acc[key].amparos.push(a)
+    if (!acc[key]) acc[key] = { label, pacientes: {} }
+    const pid = a.Pacientes?.id
+    if (!acc[key].pacientes[pid]) acc[key].pacientes[pid] = { nombre: a.Pacientes?.Nombre_Completo, amparos: [] }
+    acc[key].pacientes[pid].amparos.push(a)
     return acc
   }, {})
 
@@ -402,63 +408,61 @@ export default function Amparos() {
             <Text color="text.muted" textAlign="center" py={10}>No hay amparos registrados aún.</Text>
           ) : (
             <Stack gap={5}>
-              {Object.entries(amparosPorMes).map(([key, { label, amparos: lista }]) => (
-                <Card.Root key={key} borderRadius="xl" boxShadow="md">
-                  <Card.Header>
-                    <HStack justify="space-between" flexWrap="wrap" gap={3}>
-                      <Box>
-                        <Text fontWeight="700" fontSize="md" color="text.main" textTransform="capitalize">{label}</Text>
-                        <Text fontSize="xs" color="text.muted">{lista.length} amparo{lista.length !== 1 ? "s" : ""}</Text>
-                      </Box>
-                      <Button
-                        size="sm" colorPalette="blue" variant="outline"
-                        onClick={() => descargarZipMes(lista, label, key)}
-                        loading={descargandoZip === key}
-                      >
-                        Descargar ZIP
-                      </Button>
-                    </HStack>
-                  </Card.Header>
-                  <Card.Body p={0}>
-                    <Table.Root size="sm">
-                      <Table.Header>
-                        <Table.Row bg="bg.muted">
-                          <Table.ColumnHeader pl={4} fontWeight="600">Paciente</Table.ColumnHeader>
-                          <Table.ColumnHeader fontWeight="600">Estado</Table.ColumnHeader>
-                          <Table.ColumnHeader fontWeight="600">Fecha</Table.ColumnHeader>
-                          <Table.ColumnHeader pr={4}></Table.ColumnHeader>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
-                        {lista.map(a => {
-                          const estado = ESTADOS_AMPARO[a.estado] || ESTADOS_AMPARO.preparando_documentacion
-                          return (
-                            <Table.Row key={a.id} _hover={{ bg: "bg.hover" }}>
-                              <Table.Cell pl={4}>
-                                <Text fontWeight="500" fontSize="sm">{a.Pacientes?.Nombre_Completo}</Text>
-                                <Text fontSize="xs" color="text.faint">DNI: {a.Pacientes?.dni}</Text>
-                              </Table.Cell>
-                              <Table.Cell>
-                                <Badge colorPalette={estado.color} variant="subtle" borderRadius="full" px={2} fontSize="xs">
-                                  {estado.label}
-                                </Badge>
-                              </Table.Cell>
-                              <Table.Cell>
-                                <Text fontSize="xs" color="text.muted">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
-                              </Table.Cell>
-                              <Table.Cell pr={4}>
-                                <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={generando === a.id}>
-                                  PDF
-                                </Button>
-                              </Table.Cell>
-                            </Table.Row>
-                          )
-                        })}
-                      </Table.Body>
-                    </Table.Root>
-                  </Card.Body>
-                </Card.Root>
-              ))}
+              {Object.entries(amparosPorMes).map(([key, { label, pacientes }]) => {
+                const totalMes = Object.values(pacientes).reduce((s, p) => s + p.amparos.length, 0)
+                return (
+                  <Card.Root key={key} borderRadius="xl" boxShadow="md">
+                    <Card.Header>
+                      <HStack justify="space-between" flexWrap="wrap" gap={3}>
+                        <Box>
+                          <Text fontWeight="700" fontSize="md" color="text.main" textTransform="capitalize">{label}</Text>
+                          <Text fontSize="xs" color="text.muted">
+                            {Object.keys(pacientes).length} paciente{Object.keys(pacientes).length !== 1 ? "s" : ""} · {totalMes} amparo{totalMes !== 1 ? "s" : ""}
+                          </Text>
+                        </Box>
+                        </HStack>
+                    </Card.Header>
+                    <Card.Body>
+                      <Stack gap={4}>
+                        {Object.entries(pacientes).map(([pid, { nombre, amparos: lista }]) => (
+                          <Box key={pid}>
+                            <HStack mb={2} gap={2} justify="space-between">
+                              <HStack gap={2}>
+                                <Text fontWeight="600" fontSize="sm" color="text.main">{nombre}</Text>
+                                <Badge colorPalette="gray" variant="subtle" fontSize="xs">{lista.length} PDF{lista.length !== 1 ? "s" : ""}</Badge>
+                              </HStack>
+                              <Button
+                                size="xs" colorPalette="blue" variant="outline"
+                                onClick={() => descargarZipMes({ [pid]: { nombre, amparos: lista } }, `${nombre} - ${label}`, `${key}-${pid}`)}
+                                loading={descargandoZip === `${key}-${pid}`}
+                              >
+                                Descargar ZIP
+                              </Button>
+                            </HStack>
+                            <Stack gap={1} pl={3} borderLeft="2px solid" borderColor="border.subtle">
+                              {lista.map(a => {
+                                const estado = ESTADOS_AMPARO[a.estado] || ESTADOS_AMPARO.preparando_documentacion
+                                return (
+                                  <HStack key={a.id} justify="space-between" py={1.5} px={3} borderRadius="md" _hover={{ bg: "bg.hover" }}>
+                                    <HStack gap={3}>
+                                      <Text fontSize="xs" color="text.muted">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
+                                      <Badge colorPalette={estado.color} variant="subtle" borderRadius="full" px={2} fontSize="xs">{estado.label}</Badge>
+                                      {a.observaciones && <Text fontSize="xs" color="text.faint">{a.observaciones}</Text>}
+                                    </HStack>
+                                    <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={generando === a.id}>
+                                      PDF
+                                    </Button>
+                                  </HStack>
+                                )
+                              })}
+                            </Stack>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Card.Body>
+                  </Card.Root>
+                )
+              })}
             </Stack>
           )}
         </Tabs.Content>
