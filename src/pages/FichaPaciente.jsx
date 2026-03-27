@@ -70,7 +70,7 @@ export default function FichaPaciente() {
   const registrarEvento = async (descripcion) => {
     const { error } = await supabase
       .from("eventos")
-      .insert({ paciente_id: Number(id), descripcion })
+      .insert({ paciente_id: Number(id), descripcion, tipo: "auditoria" })
     if (error) console.error("Error registrando evento:", error.message)
   }
 
