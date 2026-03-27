@@ -94,31 +94,18 @@ export default function Amparos() {
       toaster.create({ title: "No hay templates configurados aún", type: "warning", duration: 3000 })
       return
     }
-
     setGenerando(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const html2pdf = (await import("html2pdf.js")).default
-      let generados = 0
-
-      for (const tipo of tiposDisponibles) {
-        try {
-          const html = await llamarEdgeFunction(session, paciente, tipo.key)
-          const container = document.createElement("div")
-          container.innerHTML = html
-          await html2pdf().set({ ...PDF_OPTS, filename: `${tipo.label} - ${paciente.Nombre_Completo}.pdf` }).from(container).save()
-          await supabase.from("amparos").insert({
-            geriatrico_id: geriatrico.id,
-            paciente_id: paciente.id,
-            tipo: tipo.key,
-            estado: "amparo_generado",
-          })
-          generados++
-        } catch { continue }
-      }
-
+      const inserts = tiposDisponibles.map(tipo => ({
+        geriatrico_id: geriatrico.id,
+        paciente_id: paciente.id,
+        tipo: tipo.key,
+        estado: "amparo_generado",
+      }))
+      const { error } = await supabase.from("amparos").insert(inserts)
+      if (error) throw new Error(error.message)
       fetchAmparos()
-      toaster.create({ title: `${generados} PDF${generados !== 1 ? "s" : ""} generado${generados !== 1 ? "s" : ""}`, type: "success", duration: 3000 })
+      toaster.create({ title: "Amparo generado", type: "success", duration: 3000 })
     } catch (err) {
       toaster.create({ title: "Error al generar", description: err.message, type: "error", duration: 5000 })
     }
@@ -219,7 +206,7 @@ export default function Amparos() {
               </NativeSelect.Root>
             </FieldRoot>
             <Button colorPalette="blue" onClick={generarAmparo} loading={generando}>
-              Generar PDFs
+              Generar Amparo
             </Button>
           </HStack>
         </Card.Body>
