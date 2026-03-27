@@ -388,11 +388,7 @@ export default function FichaPaciente() {
                           {a.observaciones && (
                             <Text fontSize="sm" color="text.muted">{a.observaciones}</Text>
                           )}
-                          {a.doc_url && (
-                            <Button size="xs" variant="ghost" colorPalette="blue" as="a" href={a.doc_url} target="_blank" mt={1}>
-                              Ver documento
-                            </Button>
-                          )}
+
                         </Box>
                         <HStack gap={2} flexWrap="wrap">
                           <NativeSelect.Root maxW="200px">
