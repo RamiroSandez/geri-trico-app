@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { supabase } from "../services/supabase"
 import { useAuth } from "../contexts/AuthContext"
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -59,17 +60,17 @@ export default function Dashboard() {
         <Card.Root borderRadius="lg" boxShadow="sm" bg="bg.panel">
           <Card.Body py={4} px={5}>
             <Text fontSize="3xl" fontWeight="bold" color="green.600">
-              {pacientes.filter(p => p.Obra_social).length}
+              {pacientes.filter(p => !p.estado || p.estado === "activo").length}
             </Text>
-            <Text fontSize="sm" color="text.muted">Con obra social</Text>
+            <Text fontSize="sm" color="text.muted">Activos</Text>
           </Card.Body>
         </Card.Root>
         <Card.Root borderRadius="lg" boxShadow="sm" bg="bg.panel">
           <Card.Body py={4} px={5}>
-            <Text fontSize="3xl" fontWeight="bold" color="orange.600">
-              {pacientes.filter(p => !p.Obra_social).length}
+            <Text fontSize="3xl" fontWeight="bold" color="red.600">
+              {pacientes.filter(p => p.estado === "baja").length}
             </Text>
-            <Text fontSize="sm" color="text.muted">Sin obra social</Text>
+            <Text fontSize="sm" color="text.muted">Bajas</Text>
           </Card.Body>
         </Card.Root>
       </Grid>
@@ -115,6 +116,7 @@ export default function Dashboard() {
                   <Table.ColumnHeader fontWeight="600">DNI</Table.ColumnHeader>
                   <Table.ColumnHeader fontWeight="600">Edad</Table.ColumnHeader>
                   <Table.ColumnHeader fontWeight="600">Obra Social</Table.ColumnHeader>
+                  <Table.ColumnHeader fontWeight="600">Estado</Table.ColumnHeader>
                   <Table.ColumnHeader></Table.ColumnHeader>
                 </Table.Row>
               </Table.Header>
@@ -134,6 +136,14 @@ export default function Dashboard() {
                       <Table.Cell>{p.dni}</Table.Cell>
                       <Table.Cell>{edad !== null ? `${edad} años` : "—"}</Table.Cell>
                       <Table.Cell>{p.Obra_social || "—"}</Table.Cell>
+                      <Table.Cell>
+                        <Badge
+                          colorPalette={p.estado === "baja" ? "red" : "green"}
+                          variant="subtle" borderRadius="full" px={2} fontSize="xs"
+                        >
+                          {p.estado === "baja" ? "Baja" : "Activo"}
+                        </Badge>
+                      </Table.Cell>
                       <Table.Cell>
                         <Button
                           size="xs" variant="ghost" colorPalette="blue"

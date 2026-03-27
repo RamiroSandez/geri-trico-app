@@ -22,22 +22,21 @@ import {
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
 import DocumentosPanel from "../components/DocumentosPanel"
-import { ESTADOS_AMPARO } from "../utils/constants"
-import { useAuth } from "../contexts/AuthContext"
+
+const ESTADOS_PACIENTE = {
+  activo: { label: "Activo", color: "green" },
+  baja: { label: "Baja", color: "red" },
+}
 
 export default function FichaPaciente() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { geriatrico } = useAuth()
 
   const [paciente, setPaciente] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
   const [form, setForm] = useState({})
   const [eventos, setEventos] = useState([])
-  const [amparos, setAmparos] = useState([])
-  const [creandoAmparo, setCreandoAmparo] = useState(false)
-  const [nuevoAmparo, setNuevoAmparo] = useState("")
 
   const fetchPaciente = async () => {
     const { data, error } = await supabase
@@ -61,25 +60,21 @@ export default function FichaPaciente() {
     setEventos(data || [])
   }
 
-  const fetchAmparos = async () => {
-    const { data } = await supabase
-      .from("amparos")
-      .select("*")
-      .eq("paciente_id", Number(id))
-      .order("created_at", { ascending: false })
-    setAmparos(data || [])
-  }
-
   useEffect(() => {
     fetchPaciente()
     fetchEventos()
-    fetchAmparos()
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
+  const registrarEvento = async (descripcion) => {
+    await supabase.from("eventos").insert({ paciente_id: Number(id), descripcion })
+  }
+
   const guardarDatos = async () => {
     setGuardando(true)
+    const estadoCambio = form.estado !== paciente.estado
+
     const { error } = await supabase
       .from("Pacientes")
       .update({
@@ -94,43 +89,24 @@ export default function FichaPaciente() {
         motivo_ingreso: form.motivo_ingreso,
         antecedentes: form.antecedentes,
         medicacion: form.medicacion,
-        })
+        estado: form.estado,
+      })
       .eq("id", id)
-    setGuardando(false)
+
     if (error) {
       toaster.create({ title: "Error al guardar", description: error.message, type: "error", duration: 4000 })
     } else {
+      if (estadoCambio) {
+        const nuevoEstado = ESTADOS_PACIENTE[form.estado]?.label || form.estado
+        await registrarEvento(`Estado cambiado a: ${nuevoEstado}`)
+      } else {
+        await registrarEvento("Datos del paciente actualizados")
+      }
       toaster.create({ title: "Datos actualizados", type: "success", duration: 3000 })
       fetchPaciente()
+      fetchEventos()
     }
-  }
-
-  const crearAmparo = async () => {
-    setCreandoAmparo(true)
-    const { error } = await supabase.from("amparos").insert({
-      geriatrico_id: geriatrico.id,
-      paciente_id: Number(id),
-      estado: "preparando_documentacion",
-      observaciones: nuevoAmparo || null,
-    })
-    setCreandoAmparo(false)
-    if (error) {
-      toaster.create({ title: "Error al crear amparo", description: error.message, type: "error", duration: 5000 })
-    } else {
-      toaster.create({ title: "Amparo creado", type: "success", duration: 2000 })
-      setNuevoAmparo("")
-      fetchAmparos()
-    }
-  }
-
-  const cambiarEstadoAmparo = async (amparoId, nuevoEstado) => {
-    await supabase.from("amparos").update({ estado: nuevoEstado, updated_at: new Date().toISOString() }).eq("id", amparoId)
-    setAmparos(prev => prev.map(a => a.id === amparoId ? { ...a, estado: nuevoEstado } : a))
-  }
-
-  const eliminarAmparo = async (amparoId) => {
-    await supabase.from("amparos").delete().eq("id", amparoId)
-    setAmparos(prev => prev.filter(a => a.id !== amparoId))
+    setGuardando(false)
   }
 
   if (cargando) {
@@ -150,14 +126,13 @@ export default function FichaPaciente() {
     )
   }
 
-  const ultimoAmparo = amparos[0]
-  const estadoUltimoAmparo = ultimoAmparo ? (ESTADOS_AMPARO[ultimoAmparo.estado] || ESTADOS_AMPARO.preparando_documentacion) : null
+  const estadoPaciente = ESTADOS_PACIENTE[paciente.estado] || ESTADOS_PACIENTE.activo
 
   return (
     <Box px={6} py={6}>
       <Toaster />
 
-      {/* Header de la ficha */}
+      {/* Header */}
       <HStack mb={5} gap={4} flexWrap="wrap" align="flex-start">
         <Button variant="ghost" size="sm" colorPalette="blue" onClick={() => navigate("/")}>
           ← Volver
@@ -165,11 +140,9 @@ export default function FichaPaciente() {
         <Box flex={1}>
           <HStack gap={3} flexWrap="wrap">
             <Heading size="lg" color="gray.800">{paciente.Nombre_Completo}</Heading>
-            {estadoUltimoAmparo && (
-              <Badge colorPalette={estadoUltimoAmparo.color} variant="subtle" borderRadius="full" px={3} py={1} fontSize="sm">
-                {estadoUltimoAmparo.label}
-              </Badge>
-            )}
+            <Badge colorPalette={estadoPaciente.color} variant="subtle" borderRadius="full" px={3} py={1} fontSize="sm">
+              {estadoPaciente.label}
+            </Badge>
           </HStack>
           <Text color="gray.500" fontSize="sm" mt={1}>
             DNI: {paciente.dni}
@@ -183,7 +156,6 @@ export default function FichaPaciente() {
         <Tabs.List mb={4}>
           <Tabs.Trigger value="datos">Datos del paciente</Tabs.Trigger>
           <Tabs.Trigger value="documentos">Documentos</Tabs.Trigger>
-          <Tabs.Trigger value="amparo">Amparos ({amparos.length})</Tabs.Trigger>
           <Tabs.Trigger value="historial">Historial</Tabs.Trigger>
         </Tabs.List>
 
@@ -211,6 +183,16 @@ export default function FichaPaciente() {
                 <FieldRoot>
                   <FieldLabel fontSize="sm">Fecha de nacimiento</FieldLabel>
                   <Input type="date" value={form.fecha_nacimiento || ""} onChange={e => set("fecha_nacimiento", e.target.value)} />
+                </FieldRoot>
+                <FieldRoot>
+                  <FieldLabel fontSize="sm">Estado</FieldLabel>
+                  <NativeSelect.Root>
+                    <NativeSelect.Field value={form.estado || "activo"} onChange={e => set("estado", e.target.value)}>
+                      <option value="activo">Activo</option>
+                      <option value="baja">Baja</option>
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
                 </FieldRoot>
                 <GridItem colSpan={{ base: 1, md: 2 }}>
                   <FieldRoot>
@@ -261,78 +243,6 @@ export default function FichaPaciente() {
           </Card.Root>
         </Tabs.Content>
 
-        {/* Tab: Amparos */}
-        <Tabs.Content value="amparo">
-          <Stack gap={4}>
-            {/* Crear nuevo amparo */}
-            <Card.Root borderRadius="xl" boxShadow="md">
-              <Card.Body>
-                <HStack gap={3} flexWrap="wrap">
-                  <Input
-                    flex={1} minW="200px" placeholder="Observaciones (opcional)..."
-                    value={nuevoAmparo}
-                    onChange={e => setNuevoAmparo(e.target.value)}
-                    bg="bg.muted"
-                  />
-                  <Button colorPalette="blue" onClick={crearAmparo} loading={creandoAmparo}>
-                    + Nuevo Amparo
-                  </Button>
-                </HStack>
-              </Card.Body>
-            </Card.Root>
-
-            {/* Lista de amparos */}
-            {amparos.length === 0 ? (
-              <Text color="text.muted" textAlign="center" py={8}>
-                Este paciente no tiene amparos registrados.
-              </Text>
-            ) : (
-              amparos.map(a => {
-                const estado = ESTADOS_AMPARO[a.estado] || ESTADOS_AMPARO.preparando_documentacion
-                return (
-                  <Card.Root key={a.id} borderRadius="xl" boxShadow="sm">
-                    <Card.Body>
-                      <HStack justify="space-between" flexWrap="wrap" gap={4}>
-                        <Box flex={1}>
-                          <HStack gap={2} mb={1}>
-                            <Badge colorPalette={estado.color} variant="subtle" borderRadius="full" px={3}>
-                              {estado.label}
-                            </Badge>
-                            <Text fontSize="xs" color="text.faint">
-                              {new Date(a.created_at).toLocaleDateString("es-AR")}
-                            </Text>
-                          </HStack>
-                          {a.observaciones && (
-                            <Text fontSize="sm" color="text.muted">{a.observaciones}</Text>
-                          )}
-
-                        </Box>
-                        <HStack gap={2} flexWrap="wrap">
-                          <NativeSelect.Root maxW="200px">
-                            <NativeSelect.Field
-                              value={a.estado}
-                              onChange={e => cambiarEstadoAmparo(a.id, e.target.value)}
-                              fontSize="sm"
-                            >
-                              {Object.entries(ESTADOS_AMPARO).map(([k, v]) => (
-                                <option key={k} value={k}>{v.label}</option>
-                              ))}
-                            </NativeSelect.Field>
-                            <NativeSelect.Indicator />
-                          </NativeSelect.Root>
-                          <Button size="sm" colorPalette="red" variant="ghost" onClick={() => eliminarAmparo(a.id)}>
-                            ✕
-                          </Button>
-                        </HStack>
-                      </HStack>
-                    </Card.Body>
-                  </Card.Root>
-                )
-              })
-            )}
-          </Stack>
-        </Tabs.Content>
-
         {/* Tab: Historial */}
         <Tabs.Content value="historial">
           <Card.Root borderRadius="xl" boxShadow="md">
@@ -352,14 +262,7 @@ export default function FichaPaciente() {
                       borderColor="gray.100"
                       align="flex-start"
                     >
-                      <Box
-                        w="8px"
-                        h="8px"
-                        borderRadius="full"
-                        bg="blue.400"
-                        mt="6px"
-                        flexShrink={0}
-                      />
+                      <Box w="8px" h="8px" borderRadius="full" bg="blue.400" mt="6px" flexShrink={0} />
                       <Box flex={1}>
                         <Text fontSize="sm" fontWeight="500">{ev.descripcion}</Text>
                         <Text fontSize="xs" color="gray.400" mt={0.5}>
