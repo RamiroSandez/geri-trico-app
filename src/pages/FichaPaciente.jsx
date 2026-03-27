@@ -68,43 +68,45 @@ export default function FichaPaciente() {
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
   const registrarEvento = async (descripcion) => {
-    await supabase.from("eventos").insert({ paciente_id: Number(id), descripcion })
+    const { error } = await supabase
+      .from("eventos")
+      .insert({ paciente_id: Number(id), descripcion })
+    if (error) console.error("Error registrando evento:", error.message)
   }
 
   const guardarDatos = async () => {
     setGuardando(true)
-    const estadoCambio = form.estado !== paciente.estado
+    const estadoActual = paciente.estado || "activo"
+    const estadoNuevo = form.estado || "activo"
+    const estadoCambio = estadoNuevo !== estadoActual
 
-    const { error } = await supabase
-      .from("Pacientes")
-      .update({
-        Nombre_Completo: form.Nombre_Completo,
-        dni: form.dni,
-        Obra_social: form.Obra_social,
-        numero_afiliado: form.numero_afiliado,
-        fecha_nacimiento: form.fecha_nacimiento || null,
-        diagnostico: form.diagnostico,
-        telefono_contacto: form.telefono_contacto,
-        nombre_contacto: form.nombre_contacto,
-        motivo_ingreso: form.motivo_ingreso,
-        antecedentes: form.antecedentes,
-        medicacion: form.medicacion,
-        estado: form.estado,
-      })
-      .eq("id", id)
+    const updatePayload = {
+      Nombre_Completo: form.Nombre_Completo,
+      dni: form.dni,
+      Obra_social: form.Obra_social,
+      numero_afiliado: form.numero_afiliado,
+      fecha_nacimiento: form.fecha_nacimiento || null,
+      diagnostico: form.diagnostico,
+      telefono_contacto: form.telefono_contacto,
+      nombre_contacto: form.nombre_contacto,
+      motivo_ingreso: form.motivo_ingreso,
+      antecedentes: form.antecedentes,
+      medicacion: form.medicacion,
+      estado: estadoNuevo,
+    }
+
+    const { error } = await supabase.from("Pacientes").update(updatePayload).eq("id", id)
 
     if (error) {
       toaster.create({ title: "Error al guardar", description: error.message, type: "error", duration: 4000 })
     } else {
-      if (estadoCambio) {
-        const nuevoEstado = ESTADOS_PACIENTE[form.estado]?.label || form.estado
-        await registrarEvento(`Estado cambiado a: ${nuevoEstado}`)
-      } else {
-        await registrarEvento("Datos del paciente actualizados")
-      }
+      const descripcion = estadoCambio
+        ? `Estado cambiado a: ${ESTADOS_PACIENTE[estadoNuevo]?.label || estadoNuevo}`
+        : "Datos del paciente actualizados"
+      await registrarEvento(descripcion)
       toaster.create({ title: "Datos actualizados", type: "success", duration: 3000 })
-      fetchPaciente()
-      fetchEventos()
+      await fetchPaciente()
+      await fetchEventos()
     }
     setGuardando(false)
   }
