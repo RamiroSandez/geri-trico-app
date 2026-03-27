@@ -2,11 +2,11 @@ import { useState, useEffect } from "react"
 import { supabase } from "../services/supabase"
 import { useAuth } from "../contexts/AuthContext"
 import {
-  Badge, Box, Button, Card, FieldLabel, FieldRoot,
+  Box, Button, Card, FieldLabel, FieldRoot,
   Heading, HStack, NativeSelect, Spinner, Stack, Text,
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
-import { ESTADOS_AMPARO, TIPOS_AMPARO, validarCamposAmparo } from "../utils/constants"
+import { TIPOS_AMPARO, validarCamposAmparo } from "../utils/constants"
 
 const PDF_OPTS = {
   margin: 15,
@@ -248,12 +248,10 @@ export default function Amparos() {
               <Card.Body pt={0}>
                 <Stack gap={1}>
                   {lista.map(a => {
-                    const estado = ESTADOS_AMPARO[a.estado] || ESTADOS_AMPARO.preparando_documentacion
                     return (
                       <HStack key={a.id} justify="space-between" py={2} px={3} borderRadius="md" _hover={{ bg: "bg.hover" }}>
-                        <HStack gap={3} flexWrap="wrap">
+                        <HStack gap={3}>
                           <Text fontSize="xs" color="text.muted" minW="70px">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
-                          <Badge colorPalette={estado.color} variant="subtle" borderRadius="full" px={2} fontSize="xs">{estado.label}</Badge>
                           {a.observaciones && <Text fontSize="xs" color="text.faint">{a.observaciones}</Text>}
                         </HStack>
                         <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={descargandoZip === a.id}>
