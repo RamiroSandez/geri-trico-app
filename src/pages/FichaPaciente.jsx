@@ -22,6 +22,7 @@ import {
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
 import DocumentosPanel from "../components/DocumentosPanel"
+import { useAuth } from "../contexts/AuthContext"
 
 const ESTADOS_PACIENTE = {
   activo: { label: "Activo", color: "green" },
@@ -31,10 +32,12 @@ const ESTADOS_PACIENTE = {
 export default function FichaPaciente() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [paciente, setPaciente] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
+  const [cambiandoEstado, setCambiandoEstado] = useState(false)
   const [form, setForm] = useState({})
   const [eventos, setEventos] = useState([])
 
@@ -67,11 +70,28 @@ export default function FichaPaciente() {
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
+  const nombreUsuario = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "Usuario"
+
   const registrarEvento = async (descripcion) => {
     const { error } = await supabase
       .from("eventos")
-      .insert({ paciente_id: Number(id), descripcion, tipo: "auditoria" })
+      .insert({ paciente_id: Number(id), descripcion: `${descripcion} — por ${nombreUsuario}`, tipo: "auditoria" })
     if (error) console.error("Error registrando evento:", error.message)
+  }
+
+  const cambiarEstado = async () => {
+    const nuevoEstado = (paciente.estado || "activo") === "activo" ? "baja" : "activo"
+    setCambiandoEstado(true)
+    const { error } = await supabase.from("Pacientes").update({ estado: nuevoEstado }).eq("id", id)
+    if (error) {
+      toaster.create({ title: "Error al cambiar estado", description: error.message, type: "error", duration: 4000 })
+    } else {
+      await registrarEvento(`Estado cambiado a: ${ESTADOS_PACIENTE[nuevoEstado].label}`)
+      await fetchPaciente()
+      await fetchEventos()
+      toaster.create({ title: `Paciente dado de ${nuevoEstado === "baja" ? "baja" : "alta"}`, type: "success", duration: 3000 })
+    }
+    setCambiandoEstado(false)
   }
 
   const guardarDatos = async () => {
@@ -140,11 +160,22 @@ export default function FichaPaciente() {
           ← Volver
         </Button>
         <Box flex={1}>
-          <HStack gap={3} flexWrap="wrap">
-            <Heading size="lg" color="gray.800">{paciente.Nombre_Completo}</Heading>
-            <Badge colorPalette={estadoPaciente.color} variant="subtle" borderRadius="full" px={3} py={1} fontSize="sm">
-              {estadoPaciente.label}
-            </Badge>
+          <HStack gap={3} flexWrap="wrap" justify="space-between">
+            <HStack gap={3} flexWrap="wrap">
+              <Heading size="lg" color="gray.800">{paciente.Nombre_Completo}</Heading>
+              <Badge colorPalette={estadoPaciente.color} variant="subtle" borderRadius="full" px={3} py={1} fontSize="sm">
+                {estadoPaciente.label}
+              </Badge>
+            </HStack>
+            <Button
+              size="sm"
+              colorPalette={paciente.estado === "baja" ? "green" : "red"}
+              variant="outline"
+              onClick={cambiarEstado}
+              loading={cambiandoEstado}
+            >
+              {paciente.estado === "baja" ? "Reactivar paciente" : "Dar de baja"}
+            </Button>
           </HStack>
           <Text color="gray.500" fontSize="sm" mt={1}>
             DNI: {paciente.dni}
