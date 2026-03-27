@@ -55,12 +55,11 @@ export default function FichaPaciente() {
   }
 
   const fetchEventos = async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("eventos")
       .select("*")
       .eq("paciente_id", Number(id))
       .order("created_at", { ascending: false })
-    console.log("Eventos:", data, "Error:", error)
     setEventos(data || [])
   }
 
@@ -74,12 +73,10 @@ export default function FichaPaciente() {
   const nombreUsuario = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "Usuario"
 
   const registrarEvento = async (descripcion) => {
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("eventos")
       .insert({ paciente_id: Number(id), descripcion: `${descripcion} — por ${nombreUsuario}`, tipo: "auditoria" })
-      .select()
-    if (error) toaster.create({ title: "Error en historial", description: error.message, type: "error", duration: 6000 })
-    console.log("Evento insertado:", data, "Error:", error)
+    if (error) console.error("Error registrando evento:", error.message)
   }
 
   const cambiarEstado = async () => {
