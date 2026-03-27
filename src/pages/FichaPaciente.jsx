@@ -13,7 +13,6 @@ import {
   Heading,
   HStack,
   Input,
-  NativeSelect,
   Spinner,
   Stack,
   Tabs,
@@ -216,16 +215,6 @@ export default function FichaPaciente() {
                 <FieldRoot>
                   <FieldLabel fontSize="sm">Fecha de nacimiento</FieldLabel>
                   <Input type="date" value={form.fecha_nacimiento || ""} onChange={e => set("fecha_nacimiento", e.target.value)} />
-                </FieldRoot>
-                <FieldRoot>
-                  <FieldLabel fontSize="sm">Estado</FieldLabel>
-                  <NativeSelect.Root>
-                    <NativeSelect.Field value={form.estado || "activo"} onChange={e => set("estado", e.target.value)}>
-                      <option value="activo">Activo</option>
-                      <option value="baja">Baja</option>
-                    </NativeSelect.Field>
-                    <NativeSelect.Indicator />
-                  </NativeSelect.Root>
                 </FieldRoot>
                 <GridItem colSpan={{ base: 1, md: 2 }}>
                   <FieldRoot>
