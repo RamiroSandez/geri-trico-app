@@ -6,7 +6,7 @@ import {
   Heading, HStack, NativeSelect, Spinner, Stack, Text,
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
-import { ESTADOS_AMPARO, validarCamposAmparo } from "../utils/constants"
+import { ESTADOS_AMPARO, TIPOS_AMPARO, validarCamposAmparo } from "../utils/constants"
 import PreviewAmparoModal from "../components/PreviewAmparoModal"
 
 const PDF_OPTS = {
@@ -16,12 +16,27 @@ const PDF_OPTS = {
   jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
 }
 
+const tipoLabel = (key) => TIPOS_AMPARO.find(t => t.key === key)?.label || key
+
+const buildPacientePayload = (paciente) => ({
+  nombre: paciente.Nombre_Completo,
+  dni: paciente.dni,
+  obra_social: paciente.Obra_social,
+  numero_afiliado: paciente.numero_afiliado || "",
+  fecha_nacimiento: paciente.fecha_nacimiento,
+  diagnostico: paciente.diagnostico,
+  motivo_ingreso: paciente.motivo_ingreso,
+  antecedentes: paciente.antecedentes || "",
+  medicacion: paciente.medicacion?.split("\n").filter(m => m.trim()) || [],
+})
+
 export default function Amparos() {
   const { geriatrico } = useAuth()
   const [amparos, setAmparos] = useState([])
   const [pacientes, setPacientes] = useState([])
   const [cargando, setCargando] = useState(true)
   const [pacienteId, setPacienteId] = useState("")
+  const [tipoAmparo, setTipoAmparo] = useState(TIPOS_AMPARO[0].key)
   const [generando, setGenerando] = useState(false)
   const [preview, setPreview] = useState(null)
   const [descargando, setDescargando] = useState(false)
@@ -50,12 +65,34 @@ export default function Amparos() {
     if (geriatrico?.id) { fetchAmparos(); fetchPacientes() }
   }, [geriatrico?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Generar ───────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  const llamarEdgeFunction = async (session, paciente, tipo) => {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generar-amparo`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+        "apikey": import.meta.env.VITE_SUPABASE_KEY,
+      },
+      body: JSON.stringify({ paciente: buildPacientePayload(paciente), tipo }),
+    })
+    const result = await response.json()
+    if (!response.ok) throw new Error(result.error || `Error ${response.status}`)
+    return result.html
+  }
+
+  // ── Generar (preview) ─────────────────────────────────────────────────────
 
   const generarAmparo = async () => {
     const paciente = pacientes.find(p => p.id === Number(pacienteId))
     if (!paciente) {
       toaster.create({ title: "Seleccioná un paciente", type: "warning", duration: 3000 })
+      return
+    }
+    const tipo = TIPOS_AMPARO.find(t => t.key === tipoAmparo)
+    if (!tipo?.templateId) {
+      toaster.create({ title: "Este tipo aún no tiene template asignado", type: "warning", duration: 3000 })
       return
     }
     const faltantes = validarCamposAmparo(paciente)
@@ -66,30 +103,8 @@ export default function Amparos() {
     setGenerando(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generar-amparo`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-          "apikey": import.meta.env.VITE_SUPABASE_KEY,
-        },
-        body: JSON.stringify({
-          paciente: {
-            nombre: paciente.Nombre_Completo,
-            dni: paciente.dni,
-            obra_social: paciente.Obra_social,
-            numero_afiliado: paciente.numero_afiliado || "",
-            fecha_nacimiento: paciente.fecha_nacimiento,
-            diagnostico: paciente.diagnostico,
-            motivo_ingreso: paciente.motivo_ingreso,
-            antecedentes: paciente.antecedentes || "",
-            medicacion: paciente.medicacion?.split("\n").filter(m => m.trim()) || [],
-          },
-        }),
-      })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || `Error ${response.status}`)
-      setPreview({ html: result.html, nombre: paciente.Nombre_Completo, pacienteId: paciente.id })
+      const html = await llamarEdgeFunction(session, paciente, tipoAmparo)
+      setPreview({ html, nombre: paciente.Nombre_Completo, pacienteId: paciente.id, tipo: tipoAmparo })
     } catch (err) {
       toaster.create({ title: "Error al generar", description: err.message, type: "error", duration: 5000 })
     }
@@ -102,22 +117,25 @@ export default function Amparos() {
     const html2pdf = (await import("html2pdf.js")).default
     const container = document.createElement("div")
     container.innerHTML = preview.html
-    await html2pdf().set({ ...PDF_OPTS, filename: `Amparo - ${preview.nombre}.pdf` }).from(container).save()
+    const label = tipoLabel(preview.tipo)
+    await html2pdf().set({ ...PDF_OPTS, filename: `${label} - ${preview.nombre}.pdf` }).from(container).save()
     await supabase.from("amparos").insert({
       geriatrico_id: geriatrico.id,
       paciente_id: preview.pacienteId,
+      tipo: preview.tipo,
       estado: "amparo_generado",
     })
     setDescargando(false)
     setPreview(null)
     fetchAmparos()
-    toaster.create({ title: "Amparo descargado", type: "success", duration: 3000 })
+    toaster.create({ title: "PDF descargado", type: "success", duration: 3000 })
   }
 
-  // ── Archivo: descarga directa e individual ────────────────────────────────
+  // ── Descarga directa individual ───────────────────────────────────────────
 
   const descargarPDFDirecto = async (amparo) => {
     const paciente = amparo.Pacientes
+    const tipo = amparo.tipo || TIPOS_AMPARO[0].key
     const faltantes = validarCamposAmparo(paciente)
     if (faltantes.length > 0) {
       toaster.create({ title: "Faltan datos", description: `Completá: ${faltantes.join(", ")}`, type: "warning", duration: 6000 })
@@ -126,39 +144,19 @@ export default function Amparos() {
     setGenerando(amparo.id)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generar-amparo`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-          "apikey": import.meta.env.VITE_SUPABASE_KEY,
-        },
-        body: JSON.stringify({
-          paciente: {
-            nombre: paciente.Nombre_Completo,
-            dni: paciente.dni,
-            obra_social: paciente.Obra_social,
-            numero_afiliado: paciente.numero_afiliado || "",
-            fecha_nacimiento: paciente.fecha_nacimiento,
-            diagnostico: paciente.diagnostico,
-            motivo_ingreso: paciente.motivo_ingreso,
-            antecedentes: paciente.antecedentes || "",
-            medicacion: paciente.medicacion?.split("\n").filter(m => m.trim()) || [],
-          },
-        }),
-      })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || `Error ${response.status}`)
+      const html = await llamarEdgeFunction(session, paciente, tipo)
       const html2pdf = (await import("html2pdf.js")).default
       const container = document.createElement("div")
-      container.innerHTML = result.html
-      await html2pdf().set({ ...PDF_OPTS, filename: `Amparo - ${paciente.Nombre_Completo}.pdf` }).from(container).save()
+      container.innerHTML = html
+      await html2pdf().set({ ...PDF_OPTS, filename: `${tipoLabel(tipo)} - ${paciente.Nombre_Completo}.pdf` }).from(container).save()
       toaster.create({ title: "PDF descargado", type: "success", duration: 2000 })
     } catch (err) {
       toaster.create({ title: "Error", description: err.message, type: "error", duration: 5000 })
     }
     setGenerando(null)
   }
+
+  // ── ZIP por paciente ──────────────────────────────────────────────────────
 
   const descargarZipPaciente = async (lista, nombre, key) => {
     setDescargandoZip(key)
@@ -170,27 +168,55 @@ export default function Amparos() {
       for (const amparo of lista) {
         const paciente = amparo.Pacientes
         if (validarCamposAmparo(paciente).length > 0) continue
+        const tipo = amparo.tipo || TIPOS_AMPARO[0].key
         try {
-          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generar-amparo`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}`, "apikey": import.meta.env.VITE_SUPABASE_KEY },
-            body: JSON.stringify({ paciente: { nombre: paciente.Nombre_Completo, dni: paciente.dni, obra_social: paciente.Obra_social, numero_afiliado: paciente.numero_afiliado || "", fecha_nacimiento: paciente.fecha_nacimiento, diagnostico: paciente.diagnostico, motivo_ingreso: paciente.motivo_ingreso, antecedentes: paciente.antecedentes || "", medicacion: paciente.medicacion?.split("\n").filter(m => m.trim()) || [] } }),
-          })
-          const result = await response.json()
-          if (!response.ok) continue
+          const html = await llamarEdgeFunction(session, paciente, tipo)
           const container = document.createElement("div")
-          container.innerHTML = result.html
+          container.innerHTML = html
           const pdf = await html2pdf().set(PDF_OPTS).from(container).toPdf().get("pdf")
           const fecha = new Date(amparo.created_at).toLocaleDateString("es-AR").replace(/\//g, "-")
-          zip.file(`Amparo - ${nombre} - ${fecha}.pdf`, pdf.output("blob"))
+          zip.file(`${tipoLabel(tipo)} - ${fecha}.pdf`, pdf.output("blob"))
         } catch { continue }
       }
       const blob = await zip.generateAsync({ type: "blob" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
-      a.href = url
-      a.download = `Amparos - ${nombre}.zip`
-      a.click()
+      a.href = url; a.download = `Amparos - ${nombre}.zip`; a.click()
+      URL.revokeObjectURL(url)
+      toaster.create({ title: "ZIP descargado", type: "success", duration: 3000 })
+    } catch (err) {
+      toaster.create({ title: "Error al generar ZIP", description: err.message, type: "error", duration: 5000 })
+    }
+    setDescargandoZip(null)
+  }
+
+  // ── ZIP de todos ──────────────────────────────────────────────────────────
+
+  const descargarZipTodo = async () => {
+    setDescargandoZip("__todos__")
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const html2pdf = (await import("html2pdf.js")).default
+      const JSZip = (await import("jszip")).default
+      const zip = new JSZip()
+      for (const amparo of amparos) {
+        const paciente = amparo.Pacientes
+        if (!paciente || validarCamposAmparo(paciente).length > 0) continue
+        const tipo = amparo.tipo || TIPOS_AMPARO[0].key
+        try {
+          const html = await llamarEdgeFunction(session, paciente, tipo)
+          const container = document.createElement("div")
+          container.innerHTML = html
+          const pdf = await html2pdf().set(PDF_OPTS).from(container).toPdf().get("pdf")
+          const fecha = new Date(amparo.created_at).toLocaleDateString("es-AR").replace(/\//g, "-")
+          const carpeta = paciente.Nombre_Completo
+          zip.file(`${carpeta}/${tipoLabel(tipo)} - ${fecha}.pdf`, pdf.output("blob"))
+        } catch { continue }
+      }
+      const blob = await zip.generateAsync({ type: "blob" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url; a.download = `Todos los amparos.zip`; a.click()
       URL.revokeObjectURL(url)
       toaster.create({ title: "ZIP descargado", type: "success", duration: 3000 })
     } catch (err) {
@@ -222,20 +248,38 @@ export default function Amparos() {
         descargando={descargando}
       />
 
-      <Heading size="lg" color="text.main" mb={6}>Amparos</Heading>
+      <HStack justify="space-between" mb={6} flexWrap="wrap" gap={3}>
+        <Heading size="lg" color="text.main">Amparos</Heading>
+        {amparos.length > 0 && (
+          <Button size="sm" colorPalette="blue" variant="outline" onClick={descargarZipTodo} loading={descargandoZip === "__todos__"}>
+            Descargar todo (ZIP)
+          </Button>
+        )}
+      </HStack>
 
       {/* Panel generar */}
       <Card.Root borderRadius="xl" boxShadow="md" mb={6} border="1px solid" borderColor="blue.200">
         <Card.Body>
           <Text fontWeight="600" color="text.main" mb={4}>Generar amparo</Text>
           <HStack gap={4} flexWrap="wrap" alignItems="flex-end">
-            <FieldRoot flex={1} minW="220px">
+            <FieldRoot flex={1} minW="200px">
               <FieldLabel fontSize="sm">Paciente</FieldLabel>
               <NativeSelect.Root>
                 <NativeSelect.Field value={pacienteId} onChange={e => setPacienteId(e.target.value)} bg="bg.muted">
                   <option value="">Seleccionar paciente...</option>
                   {pacientes.map(p => (
                     <option key={p.id} value={p.id}>{p.Nombre_Completo}</option>
+                  ))}
+                </NativeSelect.Field>
+                <NativeSelect.Indicator />
+              </NativeSelect.Root>
+            </FieldRoot>
+            <FieldRoot flex={1} minW="200px">
+              <FieldLabel fontSize="sm">Tipo de documento</FieldLabel>
+              <NativeSelect.Root>
+                <NativeSelect.Field value={tipoAmparo} onChange={e => setTipoAmparo(e.target.value)} bg="bg.muted">
+                  {TIPOS_AMPARO.map(t => (
+                    <option key={t.key} value={t.key} disabled={!t.templateId}>{t.label}{!t.templateId ? " (próximamente)" : ""}</option>
                   ))}
                 </NativeSelect.Field>
                 <NativeSelect.Indicator />
@@ -261,7 +305,7 @@ export default function Amparos() {
                 <HStack justify="space-between" flexWrap="wrap" gap={3}>
                   <Box>
                     <Text fontWeight="700" fontSize="md" color="text.main">{nombre}</Text>
-                    <Text fontSize="xs" color="text.muted">{lista.length} amparo{lista.length !== 1 ? "s" : ""}</Text>
+                    <Text fontSize="xs" color="text.muted">{lista.length} documento{lista.length !== 1 ? "s" : ""}</Text>
                   </Box>
                   {lista.length > 1 && (
                     <Button size="sm" colorPalette="blue" variant="outline" onClick={() => descargarZipPaciente(lista, nombre, pid)} loading={descargandoZip === pid}>
@@ -276,9 +320,10 @@ export default function Amparos() {
                     const estado = ESTADOS_AMPARO[a.estado] || ESTADOS_AMPARO.preparando_documentacion
                     return (
                       <HStack key={a.id} justify="space-between" py={2} px={3} borderRadius="md" _hover={{ bg: "bg.hover" }}>
-                        <HStack gap={3}>
+                        <HStack gap={3} flexWrap="wrap">
                           <Text fontSize="xs" color="text.muted" minW="70px">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
                           <Badge colorPalette={estado.color} variant="subtle" borderRadius="full" px={2} fontSize="xs">{estado.label}</Badge>
+                          {a.tipo && <Text fontSize="xs" color="text.faint">{tipoLabel(a.tipo)}</Text>}
                           {a.observaciones && <Text fontSize="xs" color="text.faint">{a.observaciones}</Text>}
                         </HStack>
                         <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={generando === a.id}>

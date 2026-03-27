@@ -51,6 +51,13 @@ export const validarCamposAmparo = (paciente) =>
     .filter(({ key }) => !paciente?.[key])
     .map(({ label }) => label)
 
+export const TIPOS_AMPARO = [
+  { key: "resumen_historia_clinica", label: "Resumen de Historia Clínica", templateId: "148LbUTSyofdAs625zdr1FPSgMtMRFAzVRCrmOnsFTcE" },
+  { key: "tipo_2", label: "Tipo 2 (pendiente)", templateId: "" },
+  { key: "tipo_3", label: "Tipo 3 (pendiente)", templateId: "" },
+  { key: "tipo_4", label: "Tipo 4 (pendiente)", templateId: "" },
+]
+
 export const ROLES_GERIATRICO = {
   admin: { label: "Administrador", color: "blue" },
   gerente: { label: "Gerente", color: "purple" },
