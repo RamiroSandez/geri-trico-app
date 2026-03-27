@@ -254,11 +254,10 @@ export default function Amparos() {
                         <HStack gap={3} flexWrap="wrap">
                           <Text fontSize="xs" color="text.muted" minW="70px">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
                           <Badge colorPalette={estado.color} variant="subtle" borderRadius="full" px={2} fontSize="xs">{estado.label}</Badge>
-                          {a.tipo && <Text fontSize="xs" color="text.faint">{tipoLabel(a.tipo)}</Text>}
                           {a.observaciones && <Text fontSize="xs" color="text.faint">{a.observaciones}</Text>}
                         </HStack>
                         <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={descargandoZip === a.id}>
-                          PDF
+                          {tipoLabel(a.tipo)}
                         </Button>
                       </HStack>
                     )
