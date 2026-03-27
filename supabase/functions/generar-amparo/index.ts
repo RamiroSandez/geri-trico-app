@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts"
 
-const TEMPLATE_ID = "148LbUTSyofdAs625zdr1FPSgMtMRFAzVRCrmOnsFTcE"
+const TEMPLATE_IDS: Record<string, string> = {
+  resumen_historia_clinica: "148LbUTSyofdAs625zdr1FPSgMtMRFAzVRCrmOnsFTcE",
+  tipo_2: "",
+  tipo_3: "",
+  tipo_4: "",
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,13 +74,16 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders })
 
   try {
-    const { paciente } = await req.json()
+    const { paciente, tipo } = await req.json()
+
+    const templateId = TEMPLATE_IDS[tipo]
+    if (!templateId) throw new Error(`Tipo de documento no válido o sin template asignado: ${tipo}`)
 
     const token = await getServiceAccountToken()
 
     // Export template as HTML (read-only, no quota used)
     const exportRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${TEMPLATE_ID}/export?mimeType=text/html`,
+      `https://www.googleapis.com/drive/v3/files/${templateId}/export?mimeType=text/html`,
       { headers: { Authorization: `Bearer ${token}` } }
     )
 
