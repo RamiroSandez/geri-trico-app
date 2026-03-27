@@ -22,8 +22,7 @@ import {
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
 import DocumentosPanel from "../components/DocumentosPanel"
-import PreviewAmparoModal from "../components/PreviewAmparoModal"
-import { ESTADOS_AMPARO, validarCamposAmparo } from "../utils/constants"
+import { ESTADOS_AMPARO } from "../utils/constants"
 import { useAuth } from "../contexts/AuthContext"
 
 export default function FichaPaciente() {
@@ -39,9 +38,6 @@ export default function FichaPaciente() {
   const [amparos, setAmparos] = useState([])
   const [creandoAmparo, setCreandoAmparo] = useState(false)
   const [nuevoAmparo, setNuevoAmparo] = useState("")
-  const [generando, setGenerando] = useState(null)
-  const [preview, setPreview] = useState(null)
-  const [descargando, setDescargando] = useState(false)
 
   const fetchPaciente = async () => {
     const { data, error } = await supabase
@@ -132,76 +128,6 @@ export default function FichaPaciente() {
     setAmparos(prev => prev.map(a => a.id === amparoId ? { ...a, estado: nuevoEstado } : a))
   }
 
-  const generarAmparo = async (amparo) => {
-    const faltantes = validarCamposAmparo(paciente)
-    if (faltantes.length > 0) {
-      toaster.create({
-        title: "Faltan datos del paciente",
-        description: `Completá: ${faltantes.join(", ")}`,
-        type: "warning",
-        duration: 6000,
-      })
-      return
-    }
-    setGenerando(amparo.id)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generar-amparo`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-          "apikey": import.meta.env.VITE_SUPABASE_KEY,
-        },
-        body: JSON.stringify({
-          paciente: {
-            nombre: paciente.Nombre_Completo,
-            dni: paciente.dni,
-            obra_social: paciente.Obra_social,
-            numero_afiliado: paciente.numero_afiliado || "",
-            fecha_nacimiento: paciente.fecha_nacimiento,
-            diagnostico: paciente.diagnostico,
-            motivo_ingreso: paciente.motivo_ingreso,
-            antecedentes: paciente.antecedentes || "",
-            medicacion: paciente.medicacion?.split("\n").filter(m => m.trim()) || [],
-          },
-        }),
-      })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || `Error ${response.status}`)
-
-      setPreview({ html: result.html, nombre: paciente.Nombre_Completo, amparoId: amparo.id })
-    } catch (err) {
-      toaster.create({ title: "Error al generar", description: err.message, type: "error", duration: 5000 })
-    }
-    setGenerando(null)
-  }
-
-  const descargarPDF = async () => {
-    if (!preview) return
-    setDescargando(true)
-    const html2pdf = (await import("html2pdf.js")).default
-    const container = document.createElement("div")
-    container.innerHTML = preview.html
-    await html2pdf()
-      .set({
-        margin: 15,
-        filename: `Amparo - ${preview.nombre}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      })
-      .from(container)
-      .save()
-    await supabase.from("amparos")
-      .update({ estado: "amparo_generado", updated_at: new Date().toISOString() })
-      .eq("id", preview.amparoId)
-    setDescargando(false)
-    setPreview(null)
-    fetchAmparos()
-    toaster.create({ title: "Amparo descargado", type: "success", duration: 3000 })
-  }
-
   const eliminarAmparo = async (amparoId) => {
     await supabase.from("amparos").delete().eq("id", amparoId)
     setAmparos(prev => prev.filter(a => a.id !== amparoId))
@@ -230,15 +156,6 @@ export default function FichaPaciente() {
   return (
     <Box px={6} py={6}>
       <Toaster />
-
-      <PreviewAmparoModal
-        open={!!preview}
-        onClose={() => setPreview(null)}
-        html={preview?.html || ""}
-        nombrePaciente={preview?.nombre || ""}
-        onDescargar={descargarPDF}
-        descargando={descargando}
-      />
 
       {/* Header de la ficha */}
       <HStack mb={5} gap={4} flexWrap="wrap" align="flex-start">
@@ -403,13 +320,6 @@ export default function FichaPaciente() {
                             </NativeSelect.Field>
                             <NativeSelect.Indicator />
                           </NativeSelect.Root>
-                          <Button
-                            size="sm" colorPalette="blue" variant="outline"
-                            onClick={() => generarAmparo(a)}
-                            loading={generando === a.id}
-                          >
-                            Generar
-                          </Button>
                           <Button size="sm" colorPalette="red" variant="ghost" onClick={() => eliminarAmparo(a.id)}>
                             ✕
                           </Button>
