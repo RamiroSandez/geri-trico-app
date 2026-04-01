@@ -82,8 +82,9 @@ export default function Amparos() {
   const [htmlPreview, setHtmlPreview] = useState("")
   const [guardandoDoc, setGuardandoDoc] = useState(false)
 
-  // Descarga
+  // Descarga / eliminación
   const [descargandoZip, setDescargandoZip] = useState(null)
+  const [eliminando, setEliminando] = useState(null)
 
   const tiposDisponibles = TIPOS_AMPARO.filter(t => t.templateId)
 
@@ -125,6 +126,11 @@ export default function Amparos() {
     const faltantes = validarCamposAmparo(paciente)
     if (faltantes.length > 0) {
       toaster.create({ title: "Faltan datos del paciente", description: `Completá: ${faltantes.join(", ")}`, type: "warning", duration: 6000 })
+      return
+    }
+    const yaExiste = amparos.some(a => a.paciente_id === paciente.id && a.tipo === tipoSeleccionado)
+    if (yaExiste) {
+      toaster.create({ title: "Ya existe este documento", description: "Eliminalo desde el historial para poder regenerarlo.", type: "warning", duration: 5000 })
       return
     }
     setPrevisualizando(true)
@@ -244,6 +250,19 @@ export default function Amparos() {
       toaster.create({ title: "Error al generar ZIP", description: err.message, type: "error", duration: 5000 })
     }
     setDescargandoZip(null)
+  }
+
+  // ── Eliminar ─────────────────────────────────────────────────────────────
+
+  const eliminarAmparo = async (id) => {
+    setEliminando(id)
+    const { error } = await supabase.from("amparos").delete().eq("id", id)
+    if (error) {
+      toaster.create({ title: "Error al eliminar", description: error.message, type: "error", duration: 4000 })
+    } else {
+      fetchAmparos()
+    }
+    setEliminando(null)
   }
 
   // ── Computed ──────────────────────────────────────────────────────────────
@@ -400,9 +419,14 @@ export default function Amparos() {
                   {lista.map(a => (
                     <HStack key={a.id} justify="space-between" py={2} px={3} borderRadius="md" _hover={{ bg: "bg.hover" }}>
                       <Text fontSize="xs" color="text.muted" minW="70px">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
-                      <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={descargandoZip === a.id}>
-                        {tipoLabel(a.tipo)}
-                      </Button>
+                      <HStack gap={1}>
+                        <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={descargandoZip === a.id}>
+                          {tipoLabel(a.tipo)}
+                        </Button>
+                        <Button size="xs" colorPalette="red" variant="ghost" onClick={() => eliminarAmparo(a.id)} loading={eliminando === a.id}>
+                          ✕
+                        </Button>
+                      </HStack>
                     </HStack>
                   ))}
                 </Stack>
