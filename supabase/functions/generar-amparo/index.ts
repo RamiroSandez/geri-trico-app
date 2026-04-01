@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.170.0/http/server.ts"
 
 const TEMPLATE_IDS: Record<string, string> = {
   resumen_historia_clinica: "148LbUTSyofdAs625zdr1FPSgMtMRFAzVRCrmOnsFTcE",
-  tipo_2: "",
+  presupuesto: "1Ufa6kkS01kys2yZnQSjEBP54vg3NBWiiqqbFNghFLi0",
   tipo_3: "",
   tipo_4: "",
 }
@@ -74,7 +74,7 @@ serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders })
 
   try {
-    const { paciente, tipo } = await req.json()
+    const { paciente, tipo, geriatrico = {}, extras = {} } = await req.json()
 
     const templateId = TEMPLATE_IDS[tipo]
     if (!templateId) throw new Error(`Tipo de documento no válido o sin template asignado: ${tipo}`)
@@ -130,6 +130,9 @@ serve(async (req: Request) => {
       ["{antecedentes}", paciente.antecedentes || ""],
       ["{medicación}", medicacion],
       ["{medicacion}", medicacion],
+      ["{nombre_geriatrico}", geriatrico.nombre || ""],
+      ["{nombre_director}", geriatrico.nombre_director || ""],
+      ["{item_presupuesto}", extras.item_presupuesto || ""],
     ]
 
     for (const [placeholder, value] of reemplazos) {

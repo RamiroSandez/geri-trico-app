@@ -3,7 +3,7 @@ import { supabase } from "../services/supabase"
 import { useAuth } from "../contexts/AuthContext"
 import {
   Box, Button, Card, FieldLabel, FieldRoot,
-  Heading, HStack, NativeSelect, Spinner, Stack, Text,
+  Heading, HStack, Input, NativeSelect, Spinner, Stack, Text,
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
 import { TIPOS_AMPARO, validarCamposAmparo } from "../utils/constants"
@@ -17,6 +17,11 @@ const PDF_OPTS = {
 
 const tipoLabel = (key) => TIPOS_AMPARO.find(t => t.key === key)?.label || key
 
+const mesActual = () => {
+  const d = new Date()
+  return `${d.toLocaleString("es-AR", { month: "long" }).replace(/^\w/, c => c.toUpperCase())}/${d.getFullYear()}`
+}
+
 const buildPacientePayload = (paciente) => ({
   nombre: paciente.Nombre_Completo,
   dni: paciente.dni,
@@ -29,7 +34,7 @@ const buildPacientePayload = (paciente) => ({
   medicacion: paciente.medicacion?.split("\n").filter(m => m.trim()) || [],
 })
 
-const llamarEdgeFunction = async (session, paciente, tipo) => {
+const llamarEdgeFunction = async (session, paciente, tipo, geriatrico = {}, extras = {}) => {
   const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generar-amparo`, {
     method: "POST",
     headers: {
@@ -37,7 +42,12 @@ const llamarEdgeFunction = async (session, paciente, tipo) => {
       "Authorization": `Bearer ${session.access_token}`,
       "apikey": import.meta.env.VITE_SUPABASE_KEY,
     },
-    body: JSON.stringify({ paciente: buildPacientePayload(paciente), tipo }),
+    body: JSON.stringify({
+      paciente: buildPacientePayload(paciente),
+      tipo,
+      geriatrico: { nombre: geriatrico.nombre || "", nombre_director: geriatrico.nombre_director || "" },
+      extras,
+    }),
   })
   const result = await response.json()
   if (!response.ok) throw new Error(result.error || `Error ${response.status}`)
@@ -49,9 +59,33 @@ export default function Amparos() {
   const [amparos, setAmparos] = useState([])
   const [pacientes, setPacientes] = useState([])
   const [cargando, setCargando] = useState(true)
+
+  // Generación
   const [pacienteId, setPacienteId] = useState("")
-  const [generando, setGenerando] = useState(false)
+  const [tipoSeleccionado, setTipoSeleccionado] = useState("")
+  const [itemsPresupuesto, setItemsPresupuesto] = useState([
+    { mes: "Marzo/2026", monto: "3.700.000" },
+    { mes: "Abril/2026", monto: "3.700.000" },
+    { mes: "Mayo/2026", monto: "3.800.000" },
+    { mes: "Junio/2026", monto: "3.800.000" },
+    { mes: "Julio/2026", monto: "3.900.000" },
+    { mes: "Agosto/2026", monto: "3.900.000" },
+    { mes: "Septiembre/2026", monto: "3.900.000" },
+    { mes: "Octubre/2026", monto: "4.000.000" },
+    { mes: "Noviembre/2026", monto: "4.100.000" },
+    { mes: "Diciembre/2026", monto: "4.100.000" },
+    { mes: "Enero/2027", monto: "4.200.000" },
+    { mes: "Febrero/2027", monto: "4.300.000" },
+    { mes: "Marzo/2027", monto: "4.400.000" },
+  ])
+  const [previsualizando, setPrevisualizando] = useState(false)
+  const [htmlPreview, setHtmlPreview] = useState("")
+  const [guardandoDoc, setGuardandoDoc] = useState(false)
+
+  // Descarga
   const [descargandoZip, setDescargandoZip] = useState(null)
+
+  const tiposDisponibles = TIPOS_AMPARO.filter(t => t.templateId)
 
   const fetchAmparos = async () => {
     const { data } = await supabase
@@ -76,12 +110,16 @@ export default function Amparos() {
     if (geriatrico?.id) { fetchAmparos(); fetchPacientes() }
   }, [geriatrico?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Generar todos los PDFs disponibles ────────────────────────────────────
+  // ── Previsualizar ─────────────────────────────────────────────────────────
 
-  const generarAmparo = async () => {
+  const previsualizar = async () => {
     const paciente = pacientes.find(p => p.id === Number(pacienteId))
     if (!paciente) {
       toaster.create({ title: "Seleccioná un paciente", type: "warning", duration: 3000 })
+      return
+    }
+    if (!tipoSeleccionado) {
+      toaster.create({ title: "Seleccioná un tipo de documento", type: "warning", duration: 3000 })
       return
     }
     const faltantes = validarCamposAmparo(paciente)
@@ -89,27 +127,62 @@ export default function Amparos() {
       toaster.create({ title: "Faltan datos del paciente", description: `Completá: ${faltantes.join(", ")}`, type: "warning", duration: 6000 })
       return
     }
-    const tiposDisponibles = TIPOS_AMPARO.filter(t => t.templateId)
-    if (tiposDisponibles.length === 0) {
-      toaster.create({ title: "No hay templates configurados aún", type: "warning", duration: 3000 })
-      return
-    }
-    setGenerando(true)
+    setPrevisualizando(true)
     try {
-      const inserts = tiposDisponibles.map(tipo => ({
+      const { data: { session } } = await supabase.auth.getSession()
+      const extras = tipoSeleccionado === "presupuesto"
+        ? { item_presupuesto: itemsPresupuesto.filter(i => i.mes && i.monto).map(i => `${i.mes.replace(/\//g, "-")}: $${i.monto}`).join("<br>") }
+        : {}
+      const html = await llamarEdgeFunction(session, paciente, tipoSeleccionado, geriatrico, extras)
+      setHtmlPreview(html)
+    } catch (err) {
+      toaster.create({ title: "Error al previsualizar", description: err.message, type: "error", duration: 5000 })
+    }
+    setPrevisualizando(false)
+  }
+
+  // ── Guardar documento ─────────────────────────────────────────────────────
+
+  const guardarDocumento = async () => {
+    const paciente = pacientes.find(p => p.id === Number(pacienteId))
+    if (!paciente) return
+    setGuardandoDoc(true)
+    try {
+      const itemsStr = tipoSeleccionado === "presupuesto"
+        ? itemsPresupuesto.filter(i => i.mes && i.monto).map(i => `${i.mes.replace(/\//g, "-")}: $${i.monto}`).join("<br>")
+        : null
+      const { error } = await supabase.from("amparos").insert({
         geriatrico_id: geriatrico.id,
         paciente_id: paciente.id,
-        tipo: tipo.key,
+        tipo: tipoSeleccionado,
         estado: "amparo_generado",
-      }))
-      const { error } = await supabase.from("amparos").insert(inserts)
+        observaciones: itemsStr,
+      })
       if (error) throw new Error(error.message)
+      setHtmlPreview("")
+      setItemsPresupuesto([
+        { mes: "Marzo/2026", monto: "3.700.000" },
+        { mes: "Abril/2026", monto: "3.700.000" },
+        { mes: "Mayo/2026", monto: "3.800.000" },
+        { mes: "Junio/2026", monto: "3.800.000" },
+        { mes: "Julio/2026", monto: "3.900.000" },
+        { mes: "Agosto/2026", monto: "3.900.000" },
+        { mes: "Septiembre/2026", monto: "3.900.000" },
+        { mes: "Octubre/2026", monto: "4.000.000" },
+        { mes: "Noviembre/2026", monto: "4.100.000" },
+        { mes: "Diciembre/2026", monto: "4.100.000" },
+        { mes: "Enero/2027", monto: "4.200.000" },
+        { mes: "Febrero/2027", monto: "4.300.000" },
+        { mes: "Marzo/2027", monto: "4.400.000" },
+      ])
+      setPacienteId("")
+      setTipoSeleccionado("")
       fetchAmparos()
-      toaster.create({ title: "Amparo generado", type: "success", duration: 3000 })
+      toaster.create({ title: "Documento guardado", type: "success", duration: 2000 })
     } catch (err) {
-      toaster.create({ title: "Error al generar", description: err.message, type: "error", duration: 5000 })
+      toaster.create({ title: "Error al guardar", description: err.message, type: "error", duration: 5000 })
     }
-    setGenerando(false)
+    setGuardandoDoc(false)
   }
 
   // ── Descarga individual ───────────────────────────────────────────────────
@@ -125,7 +198,8 @@ export default function Amparos() {
     setDescargandoZip(amparo.id)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const html = await llamarEdgeFunction(session, paciente, tipo)
+      const extras = amparo.observaciones ? { item_presupuesto: amparo.observaciones } : {}
+      const html = await llamarEdgeFunction(session, paciente, tipo, geriatrico, extras)
       const html2pdf = (await import("html2pdf.js")).default
       const container = document.createElement("div")
       container.innerHTML = html
@@ -150,8 +224,9 @@ export default function Amparos() {
         const paciente = amparo.Pacientes
         if (validarCamposAmparo(paciente).length > 0) continue
         const tipo = amparo.tipo || TIPOS_AMPARO[0].key
+        const extras = amparo.observaciones ? { item_presupuesto: amparo.observaciones } : {}
         try {
-          const html = await llamarEdgeFunction(session, paciente, tipo)
+          const html = await llamarEdgeFunction(session, paciente, tipo, geriatrico, extras)
           const container = document.createElement("div")
           container.innerHTML = html
           const pdf = await html2pdf().set(PDF_OPTS).from(container).toPdf().get("pdf")
@@ -189,34 +264,122 @@ export default function Amparos() {
       <Heading size="lg" color="text.main" mb={6}>Amparos</Heading>
 
       {/* Panel generar */}
-      <Card.Root borderRadius="xl" boxShadow="md" mb={6} border="1px solid" borderColor="blue.200">
-        <Card.Body>
-          <Text fontWeight="600" color="text.main" mb={4}>Generar amparos</Text>
-          <HStack gap={4} flexWrap="wrap" alignItems="flex-end">
-            <FieldRoot flex={1} minW="220px">
-              <FieldLabel fontSize="sm">Paciente</FieldLabel>
-              <NativeSelect.Root>
-                <NativeSelect.Field value={pacienteId} onChange={e => setPacienteId(e.target.value)} bg="bg.muted">
-                  <option value="">Seleccionar paciente...</option>
-                  {pacientes.map(p => (
-                    <option key={p.id} value={p.id}>{p.Nombre_Completo}</option>
-                  ))}
-                </NativeSelect.Field>
-                <NativeSelect.Indicator />
-              </NativeSelect.Root>
-            </FieldRoot>
-            <Button colorPalette="blue" onClick={generarAmparo} loading={generando}>
-              Generar Amparo
-            </Button>
-          </HStack>
-        </Card.Body>
-      </Card.Root>
+      {!htmlPreview && (
+        <Card.Root borderRadius="xl" boxShadow="md" mb={6} border="1px solid" borderColor="blue.200">
+          <Card.Body>
+            <Text fontWeight="600" color="text.main" mb={4}>Nuevo documento</Text>
+            <Stack gap={4}>
+              <HStack gap={4} flexWrap="wrap" alignItems="flex-end">
+                <FieldRoot flex={1} minW="220px">
+                  <FieldLabel fontSize="sm">Paciente</FieldLabel>
+                  <NativeSelect.Root>
+                    <NativeSelect.Field value={pacienteId} onChange={e => setPacienteId(e.target.value)} bg="bg.muted">
+                      <option value="">Seleccionar paciente...</option>
+                      {pacientes.map(p => (
+                        <option key={p.id} value={p.id}>{p.Nombre_Completo}</option>
+                      ))}
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
+                </FieldRoot>
+                <FieldRoot flex={1} minW="220px">
+                  <FieldLabel fontSize="sm">Tipo de documento</FieldLabel>
+                  <NativeSelect.Root>
+                    <NativeSelect.Field value={tipoSeleccionado} onChange={e => setTipoSeleccionado(e.target.value)} bg="bg.muted">
+                      <option value="">Seleccionar tipo...</option>
+                      {tiposDisponibles.map(t => (
+                        <option key={t.key} value={t.key}>{t.label}</option>
+                      ))}
+                    </NativeSelect.Field>
+                    <NativeSelect.Indicator />
+                  </NativeSelect.Root>
+                </FieldRoot>
+              </HStack>
+
+              {tipoSeleccionado === "presupuesto" && (
+                <Box>
+                  <Text fontSize="sm" fontWeight="500" mb={2}>Ítems del presupuesto</Text>
+                  <Stack gap={2}>
+                    {itemsPresupuesto.map((item, i) => (
+                      <HStack key={i} gap={2}>
+                        <Input
+                          value={item.mes}
+                          onChange={e => setItemsPresupuesto(prev => prev.map((it, idx) => idx === i ? { ...it, mes: e.target.value } : it))}
+                          placeholder="Abril/2026"
+                          bg="bg.muted"
+                          flex={1}
+                        />
+                        <Text color="text.muted" flexShrink={0}>$</Text>
+                        <Input
+                          value={item.monto}
+                          onChange={e => setItemsPresupuesto(prev => prev.map((it, idx) => idx === i ? { ...it, monto: e.target.value } : it))}
+                          placeholder="3.700.000"
+                          bg="bg.muted"
+                          flex={1}
+                        />
+                        {itemsPresupuesto.length > 1 && (
+                          <Button
+                            size="sm" variant="ghost" colorPalette="red"
+                            onClick={() => setItemsPresupuesto(prev => prev.filter((_, idx) => idx !== i))}
+                          >
+                            ✕
+                          </Button>
+                        )}
+                      </HStack>
+                    ))}
+                    <Button
+                      size="sm" variant="ghost" colorPalette="blue" alignSelf="flex-start"
+                      onClick={() => setItemsPresupuesto(prev => [...prev, { mes: "", monto: "" }])}
+                    >
+                      + Agregar ítem
+                    </Button>
+                  </Stack>
+                </Box>
+              )}
+
+              <Box>
+                <Button colorPalette="blue" onClick={previsualizar} loading={previsualizando}>
+                  Previsualizar
+                </Button>
+              </Box>
+            </Stack>
+          </Card.Body>
+        </Card.Root>
+      )}
+
+      {/* Vista previa */}
+      {htmlPreview && (
+        <Card.Root borderRadius="xl" boxShadow="md" mb={6}>
+          <Card.Header>
+            <HStack justify="space-between" flexWrap="wrap" gap={3}>
+              <Text fontWeight="600" color="text.main">Vista previa — {tipoLabel(tipoSeleccionado)}</Text>
+              <HStack gap={3}>
+                <Button size="sm" variant="outline" onClick={() => setHtmlPreview("")}>
+                  Cancelar
+                </Button>
+                <Button size="sm" colorPalette="blue" onClick={guardarDocumento} loading={guardandoDoc}>
+                  Guardar documento
+                </Button>
+              </HStack>
+            </HStack>
+          </Card.Header>
+          <Card.Body p={0}>
+            <Box borderTop="1px solid" borderColor="border.muted">
+              <iframe
+                srcDoc={htmlPreview}
+                style={{ width: "100%", height: "700px", border: "none", display: "block" }}
+                title="Vista previa del documento"
+              />
+            </Box>
+          </Card.Body>
+        </Card.Root>
+      )}
 
       {/* Carpetas por paciente */}
       {cargando ? (
         <Box display="flex" justifyContent="center" py={10}><Spinner size="lg" color="blue.500" /></Box>
       ) : Object.keys(amparosPorPaciente).length === 0 ? (
-        <Text color="text.muted" textAlign="center" py={10}>No hay amparos generados aún.</Text>
+        <Text color="text.muted" textAlign="center" py={10}>No hay documentos generados aún.</Text>
       ) : (
         <Stack gap={4}>
           {Object.entries(amparosPorPaciente).map(([pid, { nombre, amparos: lista }]) => (
@@ -234,19 +397,14 @@ export default function Amparos() {
               </Card.Header>
               <Card.Body pt={0}>
                 <Stack gap={1}>
-                  {lista.map(a => {
-                    return (
-                      <HStack key={a.id} justify="space-between" py={2} px={3} borderRadius="md" _hover={{ bg: "bg.hover" }}>
-                        <HStack gap={3}>
-                          <Text fontSize="xs" color="text.muted" minW="70px">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
-                          {a.observaciones && <Text fontSize="xs" color="text.faint">{a.observaciones}</Text>}
-                        </HStack>
-                        <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={descargandoZip === a.id}>
-                          {tipoLabel(a.tipo)}
-                        </Button>
-                      </HStack>
-                    )
-                  })}
+                  {lista.map(a => (
+                    <HStack key={a.id} justify="space-between" py={2} px={3} borderRadius="md" _hover={{ bg: "bg.hover" }}>
+                      <Text fontSize="xs" color="text.muted" minW="70px">{new Date(a.created_at).toLocaleDateString("es-AR")}</Text>
+                      <Button size="xs" colorPalette="blue" variant="ghost" onClick={() => descargarPDFDirecto(a)} loading={descargandoZip === a.id}>
+                        {tipoLabel(a.tipo)}
+                      </Button>
+                    </HStack>
+                  ))}
                 </Stack>
               </Card.Body>
             </Card.Root>
