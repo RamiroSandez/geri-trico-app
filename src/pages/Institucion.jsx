@@ -82,7 +82,7 @@ export default function Institucion() {
   }
 
   return (
-    <Box px={6} py={6} maxW="800px">
+    <Box px={6} py={6}>
       <Toaster />
 
       <Box mb={6}>
