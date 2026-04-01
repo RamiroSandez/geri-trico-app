@@ -17,11 +17,6 @@ const PDF_OPTS = {
 
 const tipoLabel = (key) => TIPOS_AMPARO.find(t => t.key === key)?.label || key
 
-const mesActual = () => {
-  const d = new Date()
-  return `${d.toLocaleString("es-AR", { month: "long" }).replace(/^\w/, c => c.toUpperCase())}/${d.getFullYear()}`
-}
-
 const buildPacientePayload = (paciente) => ({
   nombre: paciente.Nombre_Completo,
   dni: paciente.dni,
@@ -31,7 +26,9 @@ const buildPacientePayload = (paciente) => ({
   diagnostico: paciente.diagnostico,
   motivo_ingreso: paciente.motivo_ingreso,
   antecedentes: paciente.antecedentes || "",
-  medicacion: paciente.medicacion?.split("\n").filter(m => m.trim()) || [],
+  medicacion: typeof paciente.medicacion === "string"
+    ? paciente.medicacion.split("\n").filter(m => m.trim())
+    : [],
 })
 
 const llamarEdgeFunction = async (session, paciente, tipo, geriatrico = {}, extras = {}) => {
@@ -54,6 +51,22 @@ const llamarEdgeFunction = async (session, paciente, tipo, geriatrico = {}, extr
   return result.html
 }
 
+const ITEMS_DEFAULT = [
+  { mes: "Marzo/2026", monto: "3.700.000" },
+  { mes: "Abril/2026", monto: "3.700.000" },
+  { mes: "Mayo/2026", monto: "3.800.000" },
+  { mes: "Junio/2026", monto: "3.800.000" },
+  { mes: "Julio/2026", monto: "3.900.000" },
+  { mes: "Agosto/2026", monto: "3.900.000" },
+  { mes: "Septiembre/2026", monto: "3.900.000" },
+  { mes: "Octubre/2026", monto: "4.000.000" },
+  { mes: "Noviembre/2026", monto: "4.100.000" },
+  { mes: "Diciembre/2026", monto: "4.100.000" },
+  { mes: "Enero/2027", monto: "4.200.000" },
+  { mes: "Febrero/2027", monto: "4.300.000" },
+  { mes: "Marzo/2027", monto: "4.400.000" },
+].map(i => ({ ...i, id: crypto.randomUUID() }))
+
 export default function Amparos() {
   const { geriatrico } = useAuth()
   const [amparos, setAmparos] = useState([])
@@ -63,21 +76,7 @@ export default function Amparos() {
   // Generación
   const [pacienteId, setPacienteId] = useState("")
   const [tipoSeleccionado, setTipoSeleccionado] = useState("")
-  const [itemsPresupuesto, setItemsPresupuesto] = useState([
-    { mes: "Marzo/2026", monto: "3.700.000" },
-    { mes: "Abril/2026", monto: "3.700.000" },
-    { mes: "Mayo/2026", monto: "3.800.000" },
-    { mes: "Junio/2026", monto: "3.800.000" },
-    { mes: "Julio/2026", monto: "3.900.000" },
-    { mes: "Agosto/2026", monto: "3.900.000" },
-    { mes: "Septiembre/2026", monto: "3.900.000" },
-    { mes: "Octubre/2026", monto: "4.000.000" },
-    { mes: "Noviembre/2026", monto: "4.100.000" },
-    { mes: "Diciembre/2026", monto: "4.100.000" },
-    { mes: "Enero/2027", monto: "4.200.000" },
-    { mes: "Febrero/2027", monto: "4.300.000" },
-    { mes: "Marzo/2027", monto: "4.400.000" },
-  ])
+  const [itemsPresupuesto, setItemsPresupuesto] = useState(ITEMS_DEFAULT)
   const [previsualizando, setPrevisualizando] = useState(false)
   const [htmlPreview, setHtmlPreview] = useState("")
   const [guardandoDoc, setGuardandoDoc] = useState(false)
@@ -166,21 +165,7 @@ export default function Amparos() {
       })
       if (error) throw new Error(error.message)
       setHtmlPreview("")
-      setItemsPresupuesto([
-        { mes: "Marzo/2026", monto: "3.700.000" },
-        { mes: "Abril/2026", monto: "3.700.000" },
-        { mes: "Mayo/2026", monto: "3.800.000" },
-        { mes: "Junio/2026", monto: "3.800.000" },
-        { mes: "Julio/2026", monto: "3.900.000" },
-        { mes: "Agosto/2026", monto: "3.900.000" },
-        { mes: "Septiembre/2026", monto: "3.900.000" },
-        { mes: "Octubre/2026", monto: "4.000.000" },
-        { mes: "Noviembre/2026", monto: "4.100.000" },
-        { mes: "Diciembre/2026", monto: "4.100.000" },
-        { mes: "Enero/2027", monto: "4.200.000" },
-        { mes: "Febrero/2027", monto: "4.300.000" },
-        { mes: "Marzo/2027", monto: "4.400.000" },
-      ])
+      setItemsPresupuesto(ITEMS_DEFAULT)
       setPacienteId("")
       setTipoSeleccionado("")
       fetchAmparos()
@@ -240,6 +225,11 @@ export default function Amparos() {
           zip.file(`${tipoLabel(tipo)} - ${fecha}.pdf`, pdf.output("blob"))
         } catch { continue }
       }
+      if (Object.keys(zip.files).length === 0) {
+        toaster.create({ title: "No hay documentos válidos para descargar", type: "warning", duration: 3000 })
+        setDescargandoZip(null)
+        return
+      }
       const blob = await zip.generateAsync({ type: "blob" })
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -269,6 +259,7 @@ export default function Amparos() {
 
   const amparosPorPaciente = amparos.reduce((acc, a) => {
     const pid = a.Pacientes?.id
+    if (!pid) return acc
     if (!acc[pid]) acc[pid] = { nombre: a.Pacientes?.Nombre_Completo, amparos: [] }
     acc[pid].amparos.push(a)
     return acc
@@ -319,11 +310,11 @@ export default function Amparos() {
                 <Box>
                   <Text fontSize="sm" fontWeight="500" mb={2}>Ítems del presupuesto</Text>
                   <Stack gap={2}>
-                    {itemsPresupuesto.map((item, i) => (
-                      <HStack key={i} gap={2}>
+                    {itemsPresupuesto.map((item) => (
+                      <HStack key={item.id} gap={2}>
                         <Input
                           value={item.mes}
-                          onChange={e => setItemsPresupuesto(prev => prev.map((it, idx) => idx === i ? { ...it, mes: e.target.value } : it))}
+                          onChange={e => setItemsPresupuesto(prev => prev.map(it => it.id === item.id ? { ...it, mes: e.target.value } : it))}
                           placeholder="Abril/2026"
                           bg="bg.muted"
                           flex={1}
@@ -331,7 +322,7 @@ export default function Amparos() {
                         <Text color="text.muted" flexShrink={0}>$</Text>
                         <Input
                           value={item.monto}
-                          onChange={e => setItemsPresupuesto(prev => prev.map((it, idx) => idx === i ? { ...it, monto: e.target.value } : it))}
+                          onChange={e => setItemsPresupuesto(prev => prev.map(it => it.id === item.id ? { ...it, monto: e.target.value } : it))}
                           placeholder="3.700.000"
                           bg="bg.muted"
                           flex={1}
@@ -339,7 +330,7 @@ export default function Amparos() {
                         {itemsPresupuesto.length > 1 && (
                           <Button
                             size="sm" variant="ghost" colorPalette="red"
-                            onClick={() => setItemsPresupuesto(prev => prev.filter((_, idx) => idx !== i))}
+                            onClick={() => setItemsPresupuesto(prev => prev.filter(it => it.id !== item.id))}
                           >
                             ✕
                           </Button>
@@ -348,7 +339,7 @@ export default function Amparos() {
                     ))}
                     <Button
                       size="sm" variant="ghost" colorPalette="blue" alignSelf="flex-start"
-                      onClick={() => setItemsPresupuesto(prev => [...prev, { mes: "", monto: "" }])}
+                      onClick={() => setItemsPresupuesto(prev => [...prev, { mes: "", monto: "", id: crypto.randomUUID() }])}
                     >
                       + Agregar ítem
                     </Button>
