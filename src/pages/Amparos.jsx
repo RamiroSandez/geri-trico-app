@@ -17,6 +17,53 @@ const PDF_OPTS = {
 
 const tipoLabel = (key) => TIPOS_AMPARO.find(t => t.key === key)?.label || key
 
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
+const formatearPeriodo = (val) => {
+  if (!val) return ""
+  const [year, month] = val.split("-")
+  return `${MESES[parseInt(month) - 1]} ${year}`
+}
+
+const _U = ["","UN","DOS","TRES","CUATRO","CINCO","SEIS","SIETE","OCHO","NUEVE","DIEZ","ONCE","DOCE","TRECE","CATORCE","QUINCE","DIECISÉIS","DIECISIETE","DIECIOCHO","DIECINUEVE"]
+const _V = ["VEINTE","VEINTIÚN","VEINTIDÓS","VEINTITRÉS","VEINTICUATRO","VEINTICINCO","VEINTISÉIS","VEINTISIETE","VEINTIOCHO","VEINTINUEVE"]
+const _D = ["","","VEINTE","TREINTA","CUARENTA","CINCUENTA","SESENTA","SETENTA","OCHENTA","NOVENTA"]
+const _C = ["","CIENTO","DOSCIENTOS","TRESCIENTOS","CUATROCIENTOS","QUINIENTOS","SEISCIENTOS","SETECIENTOS","OCHOCIENTOS","NOVECIENTOS"]
+
+const _menorMil = (n) => {
+  if (n === 0) return ""
+  if (n === 100) return "CIEN"
+  const c = Math.floor(n / 100), r = n % 100
+  let s = c > 0 ? _C[c] : ""
+  if (r > 0) {
+    if (s) s += " "
+    if (r < 20) s += _U[r]
+    else if (r < 30) s += _V[r - 20]
+    else { s += _D[Math.floor(r / 10)]; if (r % 10 > 0) s += " Y " + _U[r % 10] }
+  }
+  return s
+}
+
+const numeroALetras = (input) => {
+  const n = parseInt(String(input).replace(/[.,\s]/g, ""))
+  if (!n || isNaN(n)) return ""
+  const mill = Math.floor(n / 1_000_000)
+  const miles = Math.floor((n % 1_000_000) / 1_000)
+  const resto = n % 1_000
+  const partes = []
+  if (mill === 1) partes.push("UN MILLÓN")
+  else if (mill > 1) partes.push(_menorMil(mill) + " MILLONES")
+  if (miles === 1) partes.push("MIL")
+  else if (miles > 1) partes.push(_menorMil(miles) + " MIL")
+  if (resto > 0) partes.push(_menorMil(resto))
+  return partes.join(" ") + " PESOS"
+}
+
+const formatMonto = (input) => {
+  const n = parseInt(String(input).replace(/[.,\s]/g, ""))
+  if (!n || isNaN(n)) return ""
+  return "$" + n.toLocaleString("es-AR")
+}
+
 const buildPacientePayload = (paciente) => ({
   nombre: paciente.Nombre_Completo,
   dni: paciente.dni,
@@ -77,6 +124,7 @@ export default function Amparos() {
   const [pacienteId, setPacienteId] = useState("")
   const [tipoSeleccionado, setTipoSeleccionado] = useState("")
   const [itemsPresupuesto, setItemsPresupuesto] = useState(ITEMS_DEFAULT)
+  const [informeDeuda, setInformeDeuda] = useState({ monto: "", periodo: "" })
   const [previsualizando, setPrevisualizando] = useState(false)
   const [htmlPreview, setHtmlPreview] = useState("")
   const [guardandoDoc, setGuardandoDoc] = useState(false)
@@ -137,6 +185,8 @@ export default function Amparos() {
       const { data: { session } } = await supabase.auth.getSession()
       const extras = tipoSeleccionado === "presupuesto"
         ? { item_presupuesto: itemsPresupuesto.filter(i => i.mes && i.monto).map(i => `${i.mes.replace(/\//g, "-")}: $${i.monto}`).join("<br>") }
+        : tipoSeleccionado === "tipo_3"
+        ? { monto_letras: numeroALetras(informeDeuda.monto), monto_numerico: formatMonto(informeDeuda.monto), periodo: formatearPeriodo(informeDeuda.periodo) }
         : {}
       const html = await llamarEdgeFunction(session, paciente, tipoSeleccionado, geriatrico, extras)
       setHtmlPreview(html)
@@ -155,6 +205,8 @@ export default function Amparos() {
     try {
       const itemsStr = tipoSeleccionado === "presupuesto"
         ? itemsPresupuesto.filter(i => i.mes && i.monto).map(i => `${i.mes.replace(/\//g, "-")}: $${i.monto}`).join("<br>")
+        : tipoSeleccionado === "tipo_3"
+        ? JSON.stringify({ monto: informeDeuda.monto, periodo: informeDeuda.periodo })
         : null
       const { error } = await supabase.from("amparos").insert({
         geriatrico_id: geriatrico.id,
@@ -166,6 +218,7 @@ export default function Amparos() {
       if (error) throw new Error(error.message)
       setHtmlPreview("")
       setItemsPresupuesto(ITEMS_DEFAULT)
+      setInformeDeuda({ monto: "", periodo: "" })
       setPacienteId("")
       setTipoSeleccionado("")
       fetchAmparos()
@@ -189,7 +242,9 @@ export default function Amparos() {
     setDescargandoZip(amparo.id)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const extras = amparo.observaciones ? { item_presupuesto: amparo.observaciones } : {}
+      let extras = {}
+      if (tipo === "presupuesto" && amparo.observaciones) extras = { item_presupuesto: amparo.observaciones }
+      else if (tipo === "tipo_3" && amparo.observaciones) { try { const r = JSON.parse(amparo.observaciones); extras = { monto_letras: numeroALetras(r.monto), monto_numerico: formatMonto(r.monto), periodo: formatearPeriodo(r.periodo) } } catch {} }
       const html = await llamarEdgeFunction(session, paciente, tipo, geriatrico, extras)
       const html2pdf = (await import("html2pdf.js")).default
       const container = document.createElement("div")
@@ -215,7 +270,9 @@ export default function Amparos() {
         const paciente = amparo.Pacientes
         if (validarCamposAmparo(paciente).length > 0) continue
         const tipo = amparo.tipo || TIPOS_AMPARO[0].key
-        const extras = amparo.observaciones ? { item_presupuesto: amparo.observaciones } : {}
+        let extras = {}
+        if (tipo === "presupuesto" && amparo.observaciones) extras = { item_presupuesto: amparo.observaciones }
+        else if (tipo === "tipo_3" && amparo.observaciones) { try { const r = JSON.parse(amparo.observaciones); extras = { monto_letras: numeroALetras(r.monto), monto_numerico: formatMonto(r.monto), periodo: formatearPeriodo(r.periodo) } } catch {} }
         try {
           const html = await llamarEdgeFunction(session, paciente, tipo, geriatrico, extras)
           const container = document.createElement("div")
@@ -305,6 +362,40 @@ export default function Amparos() {
                   </NativeSelect.Root>
                 </FieldRoot>
               </HStack>
+
+              {tipoSeleccionado === "tipo_3" && (
+                <Box>
+                  <Text fontSize="sm" fontWeight="500" mb={3}>Datos del informe de deuda</Text>
+                  <Stack gap={3}>
+                    <HStack gap={3} alignItems="flex-end">
+                      <FieldRoot flex={1}>
+                        <FieldLabel fontSize="sm">Monto adeudado</FieldLabel>
+                        <Input
+                          type="number"
+                          value={informeDeuda.monto}
+                          onChange={e => setInformeDeuda(prev => ({ ...prev, monto: e.target.value }))}
+                          placeholder="3700000"
+                          bg="bg.muted"
+                        />
+                        {informeDeuda.monto && (
+                          <Text fontSize="xs" color="text.muted" mt={1}>
+                            {formatMonto(informeDeuda.monto)} — {numeroALetras(informeDeuda.monto)}
+                          </Text>
+                        )}
+                      </FieldRoot>
+                      <FieldRoot flex={1}>
+                        <FieldLabel fontSize="sm">Período</FieldLabel>
+                        <Input
+                          type="month"
+                          value={informeDeuda.periodo}
+                          onChange={e => setInformeDeuda(prev => ({ ...prev, periodo: e.target.value }))}
+                          bg="bg.muted"
+                        />
+                      </FieldRoot>
+                    </HStack>
+                  </Stack>
+                </Box>
+              )}
 
               {tipoSeleccionado === "presupuesto" && (
                 <Box>

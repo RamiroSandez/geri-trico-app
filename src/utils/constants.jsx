@@ -54,7 +54,7 @@ export const validarCamposAmparo = (paciente) =>
 export const TIPOS_AMPARO = [
   { key: "resumen_historia_clinica", label: "Resumen de Historia Clínica", templateId: "148LbUTSyofdAs625zdr1FPSgMtMRFAzVRCrmOnsFTcE" },
   { key: "presupuesto", label: "Presupuesto", templateId: "1Ufa6kkS01kys2yZnQSjEBP54vg3NBWiiqqbFNghFLi0" },
-  { key: "tipo_3", label: "Tipo 3 (pendiente)", templateId: "" },
+  { key: "tipo_3", label: "Informe de Deuda", templateId: "1ajhujyE4wSc8e34tPKpOT_z-b5YvbUh-AdLB3VmPupo" },
   { key: "tipo_4", label: "Tipo 4 (pendiente)", templateId: "" },
 ]
 

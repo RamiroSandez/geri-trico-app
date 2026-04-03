@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.170.0/http/server.ts"
 const TEMPLATE_IDS: Record<string, string> = {
   resumen_historia_clinica: "148LbUTSyofdAs625zdr1FPSgMtMRFAzVRCrmOnsFTcE",
   presupuesto: "1Ufa6kkS01kys2yZnQSjEBP54vg3NBWiiqqbFNghFLi0",
-  tipo_3: "",
+  tipo_3: "1ajhujyE4wSc8e34tPKpOT_z-b5YvbUh-AdLB3VmPupo",
   tipo_4: "",
 }
 
@@ -133,6 +133,9 @@ serve(async (req: Request) => {
       ["{nombre_geriatrico}", geriatrico.nombre || ""],
       ["{nombre_director}", geriatrico.nombre_director || ""],
       ["{item_presupuesto}", extras.item_presupuesto || ""],
+      ["{monto_letras}", extras.monto_letras || ""],
+      ["{monto_numerico}", extras.monto_numerico || ""],
+      ["{periodo}", extras.periodo || ""],
     ]
 
     for (const [placeholder, value] of reemplazos) {
