@@ -367,7 +367,7 @@ export default function Amparos() {
                 <Box>
                   <Text fontSize="sm" fontWeight="500" mb={3}>Datos del informe de deuda</Text>
                   <Stack gap={3}>
-                    <HStack gap={3} alignItems="flex-end">
+                    <HStack gap={3} alignItems="flex-start">
                       <FieldRoot flex={1}>
                         <FieldLabel fontSize="sm">Monto adeudado</FieldLabel>
                         <Input
