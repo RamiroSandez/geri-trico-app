@@ -4,7 +4,7 @@ const TEMPLATE_IDS: Record<string, string> = {
   resumen_historia_clinica: "148LbUTSyofdAs625zdr1FPSgMtMRFAzVRCrmOnsFTcE",
   presupuesto: "1Ufa6kkS01kys2yZnQSjEBP54vg3NBWiiqqbFNghFLi0",
   tipo_3: "1ajhujyE4wSc8e34tPKpOT_z-b5YvbUh-AdLB3VmPupo",
-  tipo_4: "",
+  tipo_4: "1CTB9_0bnoM-OZo5bvmzAl6zcQsFSZTSl2GviLjzmSBM",
 }
 
 const corsHeaders = {
