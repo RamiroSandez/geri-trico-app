@@ -185,7 +185,7 @@ export default function Amparos() {
       const { data: { session } } = await supabase.auth.getSession()
       const extras = tipoSeleccionado === "presupuesto"
         ? { item_presupuesto: itemsPresupuesto.filter(i => i.mes && i.monto).map(i => `${i.mes.replace(/\//g, "-")}: $${i.monto}`).join("<br>") }
-        : tipoSeleccionado === "tipo_3"
+        : tipoSeleccionado === "informe_deuda"
         ? { monto_letras: numeroALetras(informeDeuda.monto), monto_numerico: formatMonto(informeDeuda.monto), periodo: formatearPeriodo(informeDeuda.periodo) }
         : {}
       const html = await llamarEdgeFunction(session, paciente, tipoSeleccionado, geriatrico, extras)
@@ -205,7 +205,7 @@ export default function Amparos() {
     try {
       const itemsStr = tipoSeleccionado === "presupuesto"
         ? itemsPresupuesto.filter(i => i.mes && i.monto).map(i => `${i.mes.replace(/\//g, "-")}: $${i.monto}`).join("<br>")
-        : tipoSeleccionado === "tipo_3"
+        : tipoSeleccionado === "informe_deuda"
         ? JSON.stringify({ monto: informeDeuda.monto, periodo: informeDeuda.periodo })
         : null
       const { error } = await supabase.from("amparos").insert({
@@ -244,7 +244,7 @@ export default function Amparos() {
       const { data: { session } } = await supabase.auth.getSession()
       let extras = {}
       if (tipo === "presupuesto" && amparo.observaciones) extras = { item_presupuesto: amparo.observaciones }
-      else if (tipo === "tipo_3" && amparo.observaciones) { try { const r = JSON.parse(amparo.observaciones); extras = { monto_letras: numeroALetras(r.monto), monto_numerico: formatMonto(r.monto), periodo: formatearPeriodo(r.periodo) } } catch {} }
+      else if (tipo === "informe_deuda" && amparo.observaciones) { try { const r = JSON.parse(amparo.observaciones); extras = { monto_letras: numeroALetras(r.monto), monto_numerico: formatMonto(r.monto), periodo: formatearPeriodo(r.periodo) } } catch {} }
       const html = await llamarEdgeFunction(session, paciente, tipo, geriatrico, extras)
       const html2pdf = (await import("html2pdf.js")).default
       const container = document.createElement("div")
@@ -272,7 +272,7 @@ export default function Amparos() {
         const tipo = amparo.tipo || TIPOS_AMPARO[0].key
         let extras = {}
         if (tipo === "presupuesto" && amparo.observaciones) extras = { item_presupuesto: amparo.observaciones }
-        else if (tipo === "tipo_3" && amparo.observaciones) { try { const r = JSON.parse(amparo.observaciones); extras = { monto_letras: numeroALetras(r.monto), monto_numerico: formatMonto(r.monto), periodo: formatearPeriodo(r.periodo) } } catch {} }
+        else if (tipo === "informe_deuda" && amparo.observaciones) { try { const r = JSON.parse(amparo.observaciones); extras = { monto_letras: numeroALetras(r.monto), monto_numerico: formatMonto(r.monto), periodo: formatearPeriodo(r.periodo) } } catch {} }
         try {
           const html = await llamarEdgeFunction(session, paciente, tipo, geriatrico, extras)
           const container = document.createElement("div")
@@ -363,7 +363,7 @@ export default function Amparos() {
                 </FieldRoot>
               </HStack>
 
-              {tipoSeleccionado === "tipo_3" && (
+              {tipoSeleccionado === "informe_deuda" && (
                 <Box>
                   <Text fontSize="sm" fontWeight="500" mb={3}>Datos del informe de deuda</Text>
                   <Stack gap={3}>
