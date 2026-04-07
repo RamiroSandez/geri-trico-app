@@ -17,11 +17,7 @@ export function AuthProvider({ children }) {
       .eq("user_id", userId)
       .single()
 
-    if (owned) {
-      setGeriatrico(owned)
-      setRol("admin")
-      return owned
-    }
+    if (owned) { setGeriatrico(owned); setRol("admin"); return owned }
 
     const { data: membership } = await supabase
       .from("miembros_geriatrico")
@@ -40,7 +36,7 @@ export function AuthProvider({ children }) {
     return null
   }
 
-  // Chequeo de whitelist separado — no bloquea la carga inicial
+  // Chequeo de whitelist — se ejecuta cuando el user cambia, sin bloquear la carga
   useEffect(() => {
     if (!user) return
     supabase.from("whitelist").select("email").eq("email", user.email).single()
@@ -53,21 +49,31 @@ export function AuthProvider({ children }) {
           setRol(null)
         }
       })
-  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+      .catch(() => {}) // si falla el chequeo, no bloquear
+  }, [user])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchGeriatrico(session.user.id).finally(() => setCargando(false))
-      } else setCargando(false)
-    })
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          fetchGeriatrico(session.user.id)
+            .catch(() => {})
+            .finally(() => setCargando(false))
+        } else {
+          setCargando(false)
+        }
+      })
+      .catch(() => setCargando(false))
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchGeriatrico(session.user.id)
-      } else { setGeriatrico(null); setRol(null) }
+        fetchGeriatrico(session.user.id).catch(() => {})
+      } else {
+        setGeriatrico(null)
+        setRol(null)
+      }
     })
 
     return () => subscription.unsubscribe()
