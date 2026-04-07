@@ -50,29 +50,38 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        const permitido = await checkWhitelist(session.user.email)
-        if (!permitido) {
-          await supabase.auth.signOut()
-          setAccesoDenegado(true)
+        try {
+          const permitido = await checkWhitelist(session.user.email)
+          if (!permitido) {
+            await supabase.auth.signOut()
+            setAccesoDenegado(true)
+            setCargando(false)
+            return
+          }
+          setUser(session.user)
+          fetchGeriatrico(session.user.id).then(() => setCargando(false))
+        } catch {
           setCargando(false)
-          return
         }
-        setUser(session.user)
-        fetchGeriatrico(session.user.id).then(() => setCargando(false))
       } else setCargando(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const permitido = await checkWhitelist(session.user.email)
-        if (!permitido) {
-          await supabase.auth.signOut()
-          setAccesoDenegado(true)
-          return
+        try {
+          const permitido = await checkWhitelist(session.user.email)
+          if (!permitido) {
+            await supabase.auth.signOut()
+            setAccesoDenegado(true)
+            return
+          }
+          setAccesoDenegado(false)
+          setUser(session.user)
+          fetchGeriatrico(session.user.id)
+        } catch {
+          setUser(session.user)
+          fetchGeriatrico(session.user.id)
         }
-        setAccesoDenegado(false)
-        setUser(session.user)
-        fetchGeriatrico(session.user.id)
       } else { setUser(null); setGeriatrico(null); setRol(null) }
     })
 
