@@ -8,6 +8,12 @@ export function AuthProvider({ children }) {
   const [geriatrico, setGeriatrico] = useState(null)
   const [rol, setRol] = useState(null)
   const [cargando, setCargando] = useState(true)
+  const [accesoDenegado, setAccesoDenegado] = useState(false)
+
+  const checkWhitelist = async (email) => {
+    const { data } = await supabase.from("whitelist").select("email").eq("email", email).single()
+    return !!data
+  }
 
   const fetchGeriatrico = async (userId) => {
     // Check if owner (admin)
@@ -42,18 +48,32 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        const permitido = await checkWhitelist(session.user.email)
+        if (!permitido) {
+          await supabase.auth.signOut()
+          setAccesoDenegado(true)
+          setCargando(false)
+          return
+        }
+        setUser(session.user)
         fetchGeriatrico(session.user.id).then(() => setCargando(false))
       } else setCargando(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
+        const permitido = await checkWhitelist(session.user.email)
+        if (!permitido) {
+          await supabase.auth.signOut()
+          setAccesoDenegado(true)
+          return
+        }
+        setAccesoDenegado(false)
+        setUser(session.user)
         fetchGeriatrico(session.user.id)
-      } else { setGeriatrico(null); setRol(null) }
+      } else { setUser(null); setGeriatrico(null); setRol(null) }
     })
 
     return () => subscription.unsubscribe()
@@ -116,7 +136,7 @@ export function AuthProvider({ children }) {
   const setupPendiente = !cargando && !!user && !geriatrico
 
   return (
-    <AuthContext.Provider value={{ user, geriatrico, rol, cargando, setupPendiente, loginConGoogle, crearGeriatrico, aceptarInvitacion, logout, refreshGeriatrico }}>
+    <AuthContext.Provider value={{ user, geriatrico, rol, cargando, setupPendiente, accesoDenegado, loginConGoogle, crearGeriatrico, aceptarInvitacion, logout, refreshGeriatrico }}>
       {children}
     </AuthContext.Provider>
   )

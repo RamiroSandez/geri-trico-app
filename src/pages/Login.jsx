@@ -16,7 +16,7 @@ function GoogleIcon() {
 
 export default function Login() {
   const [cargando, setCargando] = useState(false)
-  const { loginConGoogle } = useAuth()
+  const { loginConGoogle, accesoDenegado } = useAuth()
 
   const handleGoogle = async () => {
     setCargando(true)
@@ -44,6 +44,11 @@ export default function Login() {
         <Card.Root bg="bg.panel" borderRadius="2xl" boxShadow="lg" border="1px solid" borderColor="border.subtle">
           <Card.Body p={8}>
             <Stack gap={4} align="center">
+              {accesoDenegado && (
+                <Text fontSize="sm" color="red.500" textAlign="center" fontWeight="500">
+                  Tu cuenta no tiene acceso al sistema. Contactá al administrador.
+                </Text>
+              )}
               <Text fontSize="sm" color="text.muted" textAlign="center">
                 Ingresá con tu cuenta de Google para acceder a tu geriátrico
               </Text>
