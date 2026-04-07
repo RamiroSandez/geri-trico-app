@@ -10,13 +10,7 @@ export function AuthProvider({ children }) {
   const [cargando, setCargando] = useState(true)
   const [accesoDenegado, setAccesoDenegado] = useState(false)
 
-  const checkWhitelist = async (email) => {
-    const { data } = await supabase.from("whitelist").select("email").eq("email", email).single()
-    return !!data
-  }
-
   const fetchGeriatrico = async (userId) => {
-    // Check if owner (admin)
     const { data: owned } = await supabase
       .from("geriatricos")
       .select("*")
@@ -29,7 +23,6 @@ export function AuthProvider({ children }) {
       return owned
     }
 
-    // Check if member
     const { data: membership } = await supabase
       .from("miembros_geriatrico")
       .select("rol, geriatrico_id, geriatricos(*)")
@@ -47,42 +40,34 @@ export function AuthProvider({ children }) {
     return null
   }
 
+  // Chequeo de whitelist separado — no bloquea la carga inicial
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        try {
-          const permitido = await checkWhitelist(session.user.email)
-          if (!permitido) {
-            await supabase.auth.signOut()
-            setAccesoDenegado(true)
-            setCargando(false)
-            return
-          }
-          setUser(session.user)
-          fetchGeriatrico(session.user.id).then(() => setCargando(false))
-        } catch {
-          setCargando(false)
+    if (!user) return
+    supabase.from("whitelist").select("email").eq("email", user.email).single()
+      .then(({ data }) => {
+        if (!data) {
+          supabase.auth.signOut()
+          setAccesoDenegado(true)
+          setUser(null)
+          setGeriatrico(null)
+          setRol(null)
         }
+      })
+  }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchGeriatrico(session.user.id).finally(() => setCargando(false))
       } else setCargando(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
       if (session?.user) {
-        try {
-          const permitido = await checkWhitelist(session.user.email)
-          if (!permitido) {
-            await supabase.auth.signOut()
-            setAccesoDenegado(true)
-            return
-          }
-          setAccesoDenegado(false)
-          setUser(session.user)
-          fetchGeriatrico(session.user.id)
-        } catch {
-          setUser(session.user)
-          fetchGeriatrico(session.user.id)
-        }
-      } else { setUser(null); setGeriatrico(null); setRol(null) }
+        fetchGeriatrico(session.user.id)
+      } else { setGeriatrico(null); setRol(null) }
     })
 
     return () => subscription.unsubscribe()
