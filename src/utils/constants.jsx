@@ -1,12 +1,3 @@
-export const ESTADOS_AMPARO = {
-  preparando_documentacion: { label: 'Preparando documentación', color: 'gray' },
-  documentacion_completa: { label: 'Documentación completa', color: 'blue' },
-  amparo_generado: { label: 'Amparo generado', color: 'purple' },
-  presentado: { label: 'Presentado', color: 'orange' },
-  cautelar_otorgada: { label: 'Cautelar otorgada', color: 'green' },
-  rechazado: { label: 'Rechazado', color: 'red' },
-}
-
 export const TIPOS_DOCUMENTO = {
   dni: 'DNI',
   historia_clinica: 'Historia Clínica',
