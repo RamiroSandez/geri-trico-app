@@ -39,7 +39,6 @@ export default function FichaPaciente() {
   const [cambiandoEstado, setCambiandoEstado] = useState(false)
   const [form, setForm] = useState({})
   const [eventos, setEventos] = useState([])
-
   const fetchPaciente = async () => {
     const { data, error } = await supabase
       .from("Pacientes")
@@ -187,6 +186,7 @@ export default function FichaPaciente() {
       <Tabs.Root defaultValue="datos">
         <Tabs.List mb={4}>
           <Tabs.Trigger value="datos">Datos del paciente</Tabs.Trigger>
+          <Tabs.Trigger value="consentimiento">Consentimiento</Tabs.Trigger>
           <Tabs.Trigger value="documentos">Documentos</Tabs.Trigger>
           <Tabs.Trigger value="historial">Historial</Tabs.Trigger>
         </Tabs.List>
@@ -254,6 +254,111 @@ export default function FichaPaciente() {
               </Button>
             </Card.Body>
           </Card.Root>
+        </Tabs.Content>
+
+        {/* Tab: Consentimiento */}
+        <Tabs.Content value="consentimiento">
+          <Stack gap={4}>
+            {/* Apartado de descarga */}
+            <Card.Root borderRadius="xl" boxShadow="sm">
+              <Card.Body>
+                <HStack justify="space-between" align="center">
+                  <Box>
+                    <Text fontWeight="semibold" fontSize="sm">Consentimiento de ingreso</Text>
+                    <Text fontSize="xs" color="gray.500" mt={0.5}>
+                      Imprimí el documento y completalo a mano
+                    </Text>
+                  </Box>
+                  <Button
+                    colorPalette="blue"
+                    size="sm"
+                    onClick={() => window.print()}
+                  >
+                    Imprimir documento
+                  </Button>
+                </HStack>
+              </Card.Body>
+            </Card.Root>
+
+            {/* Vista previa del documento */}
+            <Card.Root borderRadius="xl" boxShadow="md">
+              <Card.Body>
+                <Box
+                  id="consentimiento-print"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  borderRadius="lg"
+                  p={8}
+                  maxW="700px"
+                  mx="auto"
+                  bg="white"
+                  fontFamily="serif"
+                >
+                  <Text
+                    fontSize="xl"
+                    fontWeight="bold"
+                    textAlign="center"
+                    textDecoration="underline"
+                    mb={6}
+                    fontStyle="italic"
+                  >
+                    Residencia Geriátrica "Del Este"
+                  </Text>
+
+                  <Text fontSize="md" fontWeight="semibold" mb={5}>
+                    Consentimiento
+                  </Text>
+
+                  <Box mb={5}>
+                    <HStack gap={2} mb={3} align="flex-end">
+                      <Text fontSize="sm" fontWeight="bold" whiteSpace="nowrap">NOMBRE Y APELLIDO:</Text>
+                      <Box flex={1} borderBottom="1px solid" borderColor="gray.500" h="20px" />
+                    </HStack>
+                    <HStack gap={2} align="flex-end">
+                      <Text fontSize="sm" fontWeight="bold" whiteSpace="nowrap">DNI:</Text>
+                      <Box flex={1} borderBottom="1px solid" borderColor="gray.500" h="20px" />
+                    </HStack>
+                  </Box>
+
+                  <Text fontSize="sm" mb={2} lineHeight="tall">
+                    Formulo mi consentimiento expreso de ingresar a la "Residencia Geriátrica Del Este" conforme a los derechos y obligaciones.
+                  </Text>
+                  <Text fontSize="sm" mb={10} lineHeight="tall">
+                    La residencia cumple con los protocolos establecidos.
+                  </Text>
+
+                  <HStack justify="flex-end" mb={10} gap={2} align="flex-end">
+                    <Text fontSize="sm" fontWeight="bold">Buenos Aires,</Text>
+                    <Box w="32px" borderBottom="1px solid" borderColor="gray.500" h="20px" />
+                    <Text fontSize="sm">/</Text>
+                    <Box w="32px" borderBottom="1px solid" borderColor="gray.500" h="20px" />
+                    <Text fontSize="sm">/</Text>
+                    <Box w="56px" borderBottom="1px solid" borderColor="gray.500" h="20px" />
+                  </HStack>
+
+                  <Grid templateColumns="1fr 1fr" gap={16} mt={8}>
+                    <Box>
+                      <Box borderBottom="2px solid" borderColor="gray.600" mb={2} h="60px" />
+                      <Text fontSize="xs" textAlign="center" color="gray.600">Firma</Text>
+                    </Box>
+                    <Box>
+                      <Box borderBottom="2px solid" borderColor="gray.600" mb={2} h="60px" />
+                      <Text fontSize="xs" textAlign="center" color="gray.600">Aclaración</Text>
+                    </Box>
+                  </Grid>
+                </Box>
+              </Card.Body>
+            </Card.Root>
+          </Stack>
+
+          <style>{`
+            @page { margin: 0; size: A4 portrait; }
+            @media print {
+              body * { visibility: hidden; }
+              #consentimiento-print, #consentimiento-print * { visibility: visible; }
+              #consentimiento-print { position: fixed; top: 0; left: 0; width: 100%; padding: 60px; border: none !important; border-radius: 0 !important; }
+            }
+          `}</style>
         </Tabs.Content>
 
         {/* Tab: Documentos */}
