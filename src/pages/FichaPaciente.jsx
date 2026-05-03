@@ -22,6 +22,7 @@ import {
 import { Toaster, toaster } from "../components/toaster"
 import DocumentosPanel from "../components/DocumentosPanel"
 import MedicacionPaciente from "../components/MedicacionPaciente"
+import ControlDiario from "../components/ControlDiario"
 import { useAuth } from "../contexts/AuthContext"
 
 const ESTADOS_PACIENTE = {
@@ -187,6 +188,7 @@ export default function FichaPaciente() {
         <Tabs.List mb={4}>
           <Tabs.Trigger value="datos">Datos del paciente</Tabs.Trigger>
           <Tabs.Trigger value="medicacion">Medicación</Tabs.Trigger>
+          <Tabs.Trigger value="control">Control diario</Tabs.Trigger>
           <Tabs.Trigger value="consentimiento">Consentimiento</Tabs.Trigger>
           <Tabs.Trigger value="documentos">Documentos</Tabs.Trigger>
           <Tabs.Trigger value="historial">Historial</Tabs.Trigger>
@@ -256,6 +258,15 @@ export default function FichaPaciente() {
           <Card.Root borderRadius="xl" boxShadow="md">
             <Card.Body>
               <MedicacionPaciente pacienteId={Number(id)} />
+            </Card.Body>
+          </Card.Root>
+        </Tabs.Content>
+
+        {/* Tab: Control diario */}
+        <Tabs.Content value="control">
+          <Card.Root borderRadius="xl" boxShadow="md">
+            <Card.Body>
+              <ControlDiario pacienteId={Number(id)} />
             </Card.Body>
           </Card.Root>
         </Tabs.Content>
