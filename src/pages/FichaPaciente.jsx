@@ -266,7 +266,7 @@ export default function FichaPaciente() {
         <Tabs.Content value="control">
           <Card.Root borderRadius="xl" boxShadow="md">
             <Card.Body>
-              <ControlDiario pacienteId={Number(id)} />
+              <ControlDiario pacienteId={Number(id)} pacienteNombre={paciente.Nombre_Completo} />
             </Card.Body>
           </Card.Root>
         </Tabs.Content>

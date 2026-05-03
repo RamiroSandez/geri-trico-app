@@ -31,7 +31,7 @@ function fechaStr(year, month, dia) {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`
 }
 
-export default function ControlDiario({ pacienteId }) {
+export default function ControlDiario({ pacienteId, pacienteNombre }) {
   const today     = new Date()
   const [year, setYear]   = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
@@ -163,6 +163,22 @@ export default function ControlDiario({ pacienteId }) {
 
   const nombreMes = new Date(year, month).toLocaleDateString("es-AR", { month: "long", year: "numeric" })
 
+  const thStyle = {
+    border: "1px solid #000",
+    padding: "2px 1px",
+    fontWeight: "700",
+    background: "#f0f0f0",
+    textAlign: "left",
+    fontSize: "7px",
+  }
+
+  const tdStyle = {
+    border: "1px solid #000",
+    padding: "2px 1px",
+    fontSize: "7px",
+    height: "16px",
+  }
+
   return (
     <Box>
       {/* Header */}
@@ -171,11 +187,14 @@ export default function ControlDiario({ pacienteId }) {
         <HStack gap={2}>
           <Button size="xs" variant="outline" onClick={prevMonth}>‹</Button>
           <Button size="xs" variant="outline" onClick={nextMonth}>›</Button>
+          <Button size="xs" colorPalette="blue" variant="outline" onClick={() => window.print()}>
+            Imprimir
+          </Button>
         </HStack>
       </HStack>
 
       {/* Grid */}
-      <Box overflowX="auto" borderRadius="xl" border="1px solid" borderColor="border.subtle">
+      <Box id="control-diario-print" overflowX="auto" borderRadius="xl" border="1px solid" borderColor="border.subtle">
         <Box display="flex" minW="max-content">
 
           {/* ── Left sticky column ── */}
@@ -359,8 +378,8 @@ export default function ControlDiario({ pacienteId }) {
         </Box>
       </Box>
 
-      {/* Legend */}
-      <HStack mt={3} gap={4} flexWrap="wrap">
+      {/* Legend (solo pantalla) */}
+      <HStack className="no-print" mt={3} gap={4} flexWrap="wrap">
         {MEALS.map(m => (
           <HStack key={m.key} gap={1}>
             <Box w="9px" h="9px" borderRadius="2px" bg="blue.500" flexShrink={0} />
@@ -372,6 +391,138 @@ export default function ControlDiario({ pacienteId }) {
           <Text fontSize="xs" color="text.faint">Día con registro</Text>
         </HStack>
       </HStack>
+
+      {/* ── Tabla para imprimir (oculta en pantalla) ── */}
+      <div id="tabla-print" style={{ display: "none" }}>
+        {[dias.slice(0, 16), dias.slice(16)].map((pageDias, pi) => (
+          pageDias.length === 0 ? null : (
+            <div key={pi} style={{ pageBreakAfter: pi === 0 ? "always" : "avoid" }}>
+              {/* Encabezado */}
+              <div style={{ marginBottom: "5px" }}>
+                <div style={{ fontSize: "10px", fontWeight: "bold", textTransform: "uppercase", textAlign: "center", letterSpacing: "0.5px", borderBottom: "1px solid #000", paddingBottom: "3px" }}>
+                  Administración de Medicación y Control de Signos Vitales
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "8px", marginTop: "3px" }}>
+                  <span>{pacienteNombre ? `Paciente: ${pacienteNombre}` : ""}</span>
+                  <span style={{ textTransform: "capitalize" }}>MES: {nombreMes}</span>
+                </div>
+              </div>
+
+              <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", fontSize: "7.5px" }}>
+                <colgroup>
+                  <col style={{ width: "115px" }} />
+                  {pageDias.map(d => <col key={d} />)}
+                </colgroup>
+
+                <thead>
+                  <tr>
+                    <th style={thStyle}>MEDICACIÓN</th>
+                    {pageDias.map(d => (
+                      <th key={d} style={{ ...thStyle, textAlign: "center" }}>{d}</th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {/* Filas de medicamentos */}
+                  {medicamentos.length === 0 ? (
+                    [1, 2, 3, 4].map(i => (
+                      <tr key={i}><td style={{ ...tdStyle, height: "16px" }} colSpan={pageDias.length + 1} /></tr>
+                    ))
+                  ) : medicamentos.map(m => (
+                    <tr key={m.id}>
+                      <td style={{ ...tdStyle, paddingLeft: "3px", fontWeight: "600" }}>{m.medicamento.nombre}</td>
+                      {pageDias.map(d => {
+                        const fecha = fechaStr(year, month, d)
+                        const r = registroMed[`${fecha}-${m.medicamento.id}`]
+                        const hasAny = r && (r.desayuno || r.almuerzo || r.merienda || r.cena)
+                        return (
+                          <td key={d} style={{ ...tdStyle, textAlign: "center" }}>
+                            {hasAny ? "■" : ""}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+
+                  {/* Filas D/A/M/C */}
+                  {MEALS.map(meal => (
+                    <tr key={meal.key}>
+                      <td style={{ ...tdStyle, paddingLeft: "3px", fontWeight: "600" }}>
+                        {meal.full.toUpperCase()}
+                      </td>
+                      {pageDias.map(d => {
+                        const fecha = fechaStr(year, month, d)
+                        const given = medicamentos.some(m => registroMed[`${fecha}-${m.medicamento.id}`]?.[meal.key])
+                        return (
+                          <td key={d} style={{ ...tdStyle, textAlign: "center" }}>
+                            {given ? "■" : ""}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+
+                  {/* Signos vitales — cabecera */}
+                  <tr>
+                    <td colSpan={pageDias.length + 1} style={{
+                      border: "1px solid #000",
+                      background: "#000",
+                      color: "#fff",
+                      fontWeight: "700",
+                      padding: "2px 3px",
+                      fontSize: "7px",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}>
+                      SIGNOS VITALES
+                    </td>
+                  </tr>
+
+                  {/* Filas de signos vitales */}
+                  {VITALS.map(v => (
+                    <tr key={v.key}>
+                      <td style={{ ...tdStyle, paddingLeft: "3px", fontWeight: "600" }}>
+                        {v.label.toUpperCase()}
+                      </td>
+                      {pageDias.map(d => {
+                        const fecha = fechaStr(year, month, d)
+                        const val = registroSig[fecha]?.[v.key]
+                        return (
+                          <td key={d} style={{ ...tdStyle, textAlign: "center" }}>{val || ""}</td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+
+                  {/* Firma y sello */}
+                  <tr>
+                    <td colSpan={pageDias.length + 1} style={{
+                      border: "1px solid #000",
+                      padding: "22px 3px 3px",
+                      fontSize: "7.5px",
+                      fontWeight: "700",
+                    }}>
+                      FIRMA Y SELLO
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )
+        ))}
+      </div>
+
+      {/* CSS de impresión */}
+      <style>{`
+        @page { size: A4 landscape; margin: 8mm; }
+        @media print {
+          .no-print { display: none !important; }
+          body * { visibility: hidden; }
+          #tabla-print { display: block !important; visibility: visible; position: fixed; top: 0; left: 0; width: 100%; }
+          #tabla-print * { visibility: visible; }
+        }
+      `}</style>
 
       {/* ── Modal por día ── */}
       <DialogRoot
