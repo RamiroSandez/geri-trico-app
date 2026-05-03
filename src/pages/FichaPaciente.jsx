@@ -21,6 +21,7 @@ import {
 } from "@chakra-ui/react"
 import { Toaster, toaster } from "../components/toaster"
 import DocumentosPanel from "../components/DocumentosPanel"
+import MedicacionPaciente from "../components/MedicacionPaciente"
 import { useAuth } from "../contexts/AuthContext"
 
 const ESTADOS_PACIENTE = {
@@ -109,7 +110,6 @@ export default function FichaPaciente() {
       nombre_contacto: form.nombre_contacto,
       motivo_ingreso: form.motivo_ingreso,
       antecedentes: form.antecedentes,
-      medicacion: form.medicacion,
       estado: estadoNuevo,
     }
 
@@ -186,6 +186,7 @@ export default function FichaPaciente() {
       <Tabs.Root defaultValue="datos">
         <Tabs.List mb={4}>
           <Tabs.Trigger value="datos">Datos del paciente</Tabs.Trigger>
+          <Tabs.Trigger value="medicacion">Medicación</Tabs.Trigger>
           <Tabs.Trigger value="consentimiento">Consentimiento</Tabs.Trigger>
           <Tabs.Trigger value="documentos">Documentos</Tabs.Trigger>
           <Tabs.Trigger value="historial">Historial</Tabs.Trigger>
@@ -242,16 +243,19 @@ export default function FichaPaciente() {
                     <Textarea value={form.antecedentes || ""} onChange={e => set("antecedentes", e.target.value)} rows={3} placeholder="Antecedentes médicos relevantes..." />
                   </FieldRoot>
                 </GridItem>
-                <GridItem colSpan={{ base: 1, md: 2 }}>
-                  <FieldRoot>
-                    <FieldLabel fontSize="sm">Medicación (una por línea)</FieldLabel>
-                    <Textarea value={form.medicacion || ""} onChange={e => set("medicacion", e.target.value)} rows={4} placeholder={"Ej:\nMetformina 500mg - 1 comp c/12hs\nAmlodipina 5mg - 1 comp c/día"} />
-                  </FieldRoot>
-                </GridItem>
               </Grid>
               <Button mt={5} colorPalette="blue" onClick={guardarDatos} loading={guardando}>
                 Guardar cambios
               </Button>
+            </Card.Body>
+          </Card.Root>
+        </Tabs.Content>
+
+        {/* Tab: Medicación */}
+        <Tabs.Content value="medicacion">
+          <Card.Root borderRadius="xl" boxShadow="md">
+            <Card.Body>
+              <MedicacionPaciente pacienteId={Number(id)} />
             </Card.Body>
           </Card.Root>
         </Tabs.Content>
