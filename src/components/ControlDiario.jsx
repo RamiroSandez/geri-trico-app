@@ -15,11 +15,11 @@ const MEALS = [
 ]
 
 const VITALS = [
-  { key: "presion_maxima", label: "Presión Máx." },
-  { key: "presion_minima", label: "Presión Mín." },
-  { key: "pulso",          label: "Pulso" },
-  { key: "temperatura",    label: "Temperatura" },
-  { key: "respiracion",    label: "Respiración" },
+  { key: "presion_maxima", label: "Presión Máx.",  step: "1",   placeholder: "ej: 120" },
+  { key: "presion_minima", label: "Presión Mín.",  step: "1",   placeholder: "ej: 80" },
+  { key: "pulso",          label: "Pulso",         step: "1",   placeholder: "ej: 72" },
+  { key: "temperatura",    label: "Temperatura",   step: "0.1", placeholder: "ej: 36.5" },
+  { key: "respiracion",    label: "Respiración",   step: "1",   placeholder: "ej: 16" },
 ]
 
 const ROW_H  = "34px"
@@ -590,10 +590,13 @@ export default function ControlDiario({ pacienteId, pacienteNombre }) {
                       <Box key={v.key}>
                         <Text fontSize="xs" color="text.faint" mb={1}>{v.label}</Text>
                         <Input
+                          type="number"
+                          step={v.step}
+                          min="0"
                           size="sm"
                           value={formDia.signos?.[v.key] || ""}
                           onChange={e => setSigno(v.key, e.target.value)}
-                          placeholder="—"
+                          placeholder={v.placeholder}
                         />
                       </Box>
                     ))}
